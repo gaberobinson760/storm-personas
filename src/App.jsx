@@ -2,6 +2,41 @@ import { useState } from 'react'
 
 const PERSONA_COLORS = ['#4f8ef7', '#e05c5c', '#4ec97a', '#c97ae0', '#f7a84f', '#4fc9c9']
 
+const PRESET_PERSONAS = [
+  {
+    id: 'preset_philosopher',
+    name: 'The Philosopher',
+    icon: '🏛️',
+    color: '#a0897a',
+    role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
+    angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
+  },
+  {
+    id: 'preset_progressive',
+    name: 'The Progressive',
+    icon: '🌿',
+    color: '#4ec97a',
+    role: 'A progressive thinker focused on equity, systemic change, collective wellbeing, and challenging existing power structures.',
+    angle: 'Who benefits and who is left out? What systemic barriers does this ignore? How does this address or perpetuate inequality?',
+  },
+  {
+    id: 'preset_moderate',
+    name: 'The Moderate',
+    icon: '⚖️',
+    color: '#c9b84f',
+    role: 'A centrist focused on pragmatic compromise, weighing tradeoffs, and finding common ground across divides.',
+    angle: 'What are the legitimate concerns on both sides? Where is the pragmatic middle ground? What would actually get broad buy-in?',
+  },
+  {
+    id: 'preset_conservative',
+    name: 'The Conservative',
+    icon: '🏔️',
+    color: '#c97a4f',
+    role: 'A conservative thinker grounded in tradition, personal responsibility, institutional stability, and skepticism of rapid change.',
+    angle: 'What time-tested principles does this risk undermining? What unintended consequences come from moving too fast? What works about the status quo that is worth preserving?',
+  },
+]
+
 const PERSONA_PROMPT_TEMPLATE = (name, role, angle) => `You are ${name}. ${role}
 
 Your job is to analyze the idea through this lens: ${angle}
@@ -19,13 +54,11 @@ Format your response exactly like this:
 **My read:**
 [Your honest take in 3-5 sentences. Be direct.]`
 
-const DISCOVER_PERSONAS_PROMPT = `You are a thinking partner. Given an idea or problem, your job is to identify the 4 most useful expert perspectives to pressure-test it.
+const DISCOVER_PERSONAS_PROMPT = `You are a thinking partner. Given an idea or problem, identify the 4 most useful expert perspectives to pressure-test it.
 
-These should NOT be generic archetypes (avoid: "devil's advocate", "pragmatist", "visionary"). Instead, identify the specific expert lenses that matter most for THIS particular idea.
+Do NOT use generic archetypes (avoid: "devil's advocate", "pragmatist", "visionary"). Identify specific expert lenses that matter most for THIS particular idea.
 
-For example, for a new healthcare app idea you might pick: a frontline clinician, a health policy expert, a patient who's navigated the system, and a startup operator who's tried this before.
-
-Return ONLY valid JSON — no markdown, no explanation — in this exact format:
+Return ONLY valid JSON — no markdown, no explanation:
 {
   "personas": [
     {
@@ -64,7 +97,7 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
 
   return (
     <div
-      onClick={() => !panelRan && onToggle && onToggle(persona.id)}
+      onClick={() => !panelRan && onToggle && persona && onToggle(persona.id)}
       style={{
         background: '#1a1a1a',
         border: `1px solid ${selected ? color + '88' : '#2a2a2a'}`,
@@ -75,11 +108,10 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
         gap: '1rem',
         transition: 'border-color 0.2s, opacity 0.2s',
         opacity: dimmed ? 0.35 : 1,
-        cursor: (!panelRan && onToggle && persona) ? 'pointer' : 'default',
+        cursor: !panelRan && onToggle && persona ? 'pointer' : 'default',
         position: 'relative',
       }}
     >
-      {/* Checkbox */}
       {!panelRan && persona && onToggle && (
         <div style={{
           position: 'absolute',
@@ -148,11 +180,19 @@ function formatResponse(text) {
   })
 }
 
+function SectionLabel({ children }) {
+  return (
+    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+      {children}
+    </div>
+  )
+}
+
 export default function App() {
   const [idea, setIdea] = useState('')
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY || '')
   const [showKeyInput, setShowKeyInput] = useState(!import.meta.env.VITE_ANTHROPIC_API_KEY)
-  const [personas, setPersonas] = useState(null)
+  const [discovered, setDiscovered] = useState(null)
   const [selected, setSelected] = useState(new Set())
   const [responses, setResponses] = useState({})
   const [loading, setLoading] = useState({})
@@ -160,7 +200,10 @@ export default function App() {
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
 
+  const allPersonas = [...PRESET_PERSONAS, ...(discovered || [])]
+
   function togglePersona(id) {
+    if (panelRan) return
     setSelected(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
@@ -175,22 +218,32 @@ export default function App() {
 
     setError('')
     setResponses({})
-    setPersonas(null)
-    setSelected(new Set())
+    setDiscovered(null)
     setLoading({})
     setPanelRan(false)
+    setSelected(prev => {
+      const next = new Set()
+      for (const id of prev) {
+        if (PRESET_PERSONAS.find(p => p.id === id)) next.add(id)
+      }
+      return next
+    })
     setDiscovering(true)
 
     try {
       const raw = await anthropicCall(apiKey, DISCOVER_PERSONAS_PROMPT, idea.trim(), 600)
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      const discovered = JSON.parse(cleaned).personas.map((p, i) => ({
+      const disc = JSON.parse(cleaned).personas.map((p, i) => ({
         ...p,
         id: `persona_${i}`,
         color: PERSONA_COLORS[i % PERSONA_COLORS.length],
       }))
-      setPersonas(discovered)
-      setSelected(new Set(discovered.map(p => p.id)))
+      setDiscovered(disc)
+      setSelected(prev => {
+        const next = new Set(prev)
+        disc.forEach(p => next.add(p.id))
+        return next
+      })
     } catch (err) {
       setError(`Failed to discover personas: ${err.message}`)
     } finally {
@@ -199,8 +252,8 @@ export default function App() {
   }
 
   async function handleRunPanel() {
-    if (!personas || selected.size === 0) return
-    const toRun = personas.filter(p => selected.has(p.id))
+    if (selected.size === 0) return
+    const toRun = allPersonas.filter(p => selected.has(p.id))
     setResponses({})
     setPanelRan(true)
 
@@ -213,15 +266,22 @@ export default function App() {
     })
   }
 
+  function handleReset() {
+    setDiscovered(null)
+    setResponses({})
+    setSelected(new Set())
+    setPanelRan(false)
+  }
+
   const anyLoading = Object.values(loading).some(Boolean)
-  const displayPersonas = personas || (discovering ? Array(4).fill(null) : null)
+  const displayDiscovered = discovered || (discovering ? Array(4).fill(null) : null)
 
   return (
     <div>
       <div style={{ marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>STORM Personas</h1>
         <p style={{ color: '#666', fontSize: '0.95rem' }}>
-          Drop in an idea. Pick which lenses to run it through. Get honest reads from each.
+          Pick your lenses, drop in an idea, get honest reads from each perspective.
         </p>
       </div>
 
@@ -261,6 +321,26 @@ export default function App() {
         </div>
       )}
 
+      {/* Preset personas — always visible */}
+      <div style={{ marginBottom: '2rem' }}>
+        <SectionLabel>Preset personas — click to select</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+          {PRESET_PERSONAS.map(p => (
+            <PersonaCard
+              key={p.id}
+              persona={p}
+              response={responses[p.id]}
+              loading={loading[p.id]}
+              discovering={false}
+              selected={selected.has(p.id)}
+              onToggle={togglePersona}
+              panelRan={panelRan}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Idea input */}
       <form onSubmit={handleDiscover} style={{ marginBottom: '1.5rem' }}>
         <textarea
           value={idea}
@@ -282,7 +362,7 @@ export default function App() {
           }}
           onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
         />
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="submit"
             disabled={discovering || anyLoading || !idea.trim()}
@@ -291,87 +371,51 @@ export default function App() {
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
-              padding: '0.7rem 1.6rem',
-              fontSize: '0.95rem',
+              padding: '0.7rem 1.4rem',
+              fontSize: '0.9rem',
               fontWeight: 600,
               cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer',
               opacity: discovering || anyLoading || !idea.trim() ? 0.5 : 1,
               transition: 'opacity 0.2s',
             }}
           >
-            {discovering ? 'Finding lenses...' : 'Discover personas'}
+            {discovering ? 'Finding lenses...' : '+ Discover context-specific personas'}
           </button>
+
+          <button
+            type="button"
+            onClick={handleRunPanel}
+            disabled={selected.size === 0 || anyLoading || discovering || !idea.trim()}
+            style={{
+              background: selected.size === 0 || !idea.trim() ? '#1a1a1a' : '#4ec97a',
+              color: selected.size === 0 || !idea.trim() ? '#444' : '#000',
+              border: selected.size === 0 || !idea.trim() ? '1px solid #2a2a2a' : 'none',
+              borderRadius: '8px',
+              padding: '0.7rem 1.4rem',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: selected.size === 0 || anyLoading || discovering || !idea.trim() ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            Run {selected.size > 0 ? `${selected.size} ` : ''}selected
+          </button>
+
           {!showKeyInput && (
             <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}>
               API key
             </button>
           )}
-          <span style={{ fontSize: '0.75rem', color: '#444' }}>⌘↵ to discover</span>
         </div>
         {error && <p style={{ color: '#e05c5c', marginTop: '0.6rem', fontSize: '0.85rem' }}>{error}</p>}
       </form>
 
-      {displayPersonas && (
-        <>
-          {/* Selection controls */}
-          {personas && !panelRan && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-              <span style={{ color: '#666', fontSize: '0.85rem' }}>
-                {selected.size} of {personas.length} selected
-              </span>
-              <button
-                onClick={() => setSelected(new Set(personas.map(p => p.id)))}
-                style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem' }}
-              >
-                Select all
-              </button>
-              <button
-                onClick={() => setSelected(new Set())}
-                style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem' }}
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleRunPanel}
-                disabled={selected.size === 0 || anyLoading}
-                style={{
-                  marginLeft: 'auto',
-                  background: selected.size === 0 ? '#222' : '#4ec97a',
-                  color: selected.size === 0 ? '#444' : '#000',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '0.6rem 1.4rem',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  cursor: selected.size === 0 || anyLoading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s',
-                }}
-              >
-                Run {selected.size > 0 ? `${selected.size} ` : ''}selected
-              </button>
-            </div>
-          )}
-
-          {/* Reset after panel ran */}
-          {panelRan && !anyLoading && (
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-              <button
-                onClick={() => { setPanelRan(false); setResponses({}); setSelected(new Set(personas.map(p => p.id))) }}
-                style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', cursor: 'pointer', fontSize: '0.8rem' }}
-              >
-                Adjust selection
-              </button>
-              <button
-                onClick={() => { setPersonas(null); setResponses({}); setSelected(new Set()); setPanelRan(false) }}
-                style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}
-              >
-                Start over
-              </button>
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.2rem' }}>
-            {displayPersonas.map((p, i) => (
+      {/* Context-specific discovered personas */}
+      {displayDiscovered && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <SectionLabel>Context-specific personas</SectionLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+            {displayDiscovered.map((p, i) => (
               <PersonaCard
                 key={p?.id || i}
                 persona={p}
@@ -384,7 +428,25 @@ export default function App() {
               />
             ))}
           </div>
-        </>
+        </div>
+      )}
+
+      {/* Post-run controls */}
+      {panelRan && !anyLoading && (
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+          <button
+            onClick={() => { setPanelRan(false); setResponses({}) }}
+            style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            Adjust selection
+          </button>
+          <button
+            onClick={handleReset}
+            style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}
+          >
+            Start over
+          </button>
+        </div>
       )}
 
       <style>{`
