@@ -546,7 +546,10 @@ export default function App() {
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
-  const displayDiscovered = [PHILOSOPHER, ...(discovered || (discovering ? Array(4).fill(null) : []))]
+  const showContextSection = discovering || discovered !== null
+  const displayDiscovered = showContextSection
+    ? [PHILOSOPHER, ...(discovered || Array(4).fill(null))]
+    : null
   const canRun = selected.size > 0 && idea.trim() && !anyLoading && !discovering
 
   return (
