@@ -1,7 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 const PERSONA_COLORS = ['#3b6fd4', '#c94f4f', '#2e9e5e', '#8b4fc9', '#c97a2e', '#2e8fa0']
-
 
 const PHILOSOPHER = {
   id: 'preset_philosopher',
@@ -56,6 +55,12 @@ Format your response exactly like this:
 **My read:**
 [Your honest take in 3-5 sentences. Be direct.]`
 
+const CHAT_SYSTEM_PROMPT = (name, role, angle) => `You are ${name}. ${role}
+
+You are now in a one-on-one conversation. The user wants to dig deeper into your perspective. Stay fully in character — respond through your specific lens: ${angle}
+
+Be direct, thoughtful, and conversational. Ask follow-up questions when useful. Keep responses focused and under 200 words unless the question demands more depth.`
+
 const DISCOVER_PERSONAS_PROMPT = `You are a thinking partner. Given an idea or problem, identify the 4 most useful expert perspectives to pressure-test it.
 
 Do NOT use generic archetypes (avoid: "devil's advocate", "pragmatist", "visionary"). Identify specific expert lenses that matter most for THIS particular idea.
@@ -72,7 +77,7 @@ Return ONLY valid JSON — no markdown, no explanation:
   ]
 }`
 
-async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
+async function anthropicCall(apiKey, system, messages, maxTokens = 800) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -85,7 +90,7 @@ async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
       model: 'claude-sonnet-4-6',
       max_tokens: maxTokens,
       system,
-      messages: [{ role: 'user', content: userMessage }],
+      messages,
     }),
   })
   const data = await res.json()
@@ -93,7 +98,255 @@ async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
   return data.content[0].text
 }
 
-function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan }) {
+// ── Chat Modal ────────────────────────────────────────────────────────────────
+
+function ChatModal({ persona, initialResponse, originalIdea, apiKey, onClose }) {
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: initialResponse }
+  ])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const bottomRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  // Close on backdrop click
+  function handleBackdrop(e) {
+    if (e.target === e.currentTarget) onClose()
+  }
+
+  async function handleSend(e) {
+    e.preventDefault()
+    if (!input.trim() || loading) return
+
+    const userMsg = { role: 'user', content: input.trim() }
+    const newMessages = [...messages, userMsg]
+    setMessages(newMessages)
+    setInput('')
+    setLoading(true)
+
+    try {
+      // Include the original idea as context in the first user turn
+      const apiMessages = newMessages.map((m, i) => {
+        if (i === 0) return { role: 'user', content: `Context — the original idea we discussed: "${originalIdea}"\n\nYour initial response was:\n${m.content}` }
+        if (i === 1) return { role: 'assistant', content: 'Understood. What would you like to explore further?' }
+        return m
+      })
+
+      const reply = await anthropicCall(
+        apiKey,
+        CHAT_SYSTEM_PROMPT(persona.name, persona.role, persona.angle),
+        apiMessages,
+        600
+      )
+      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={handleBackdrop}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(10, 15, 30, 0.6)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        padding: '0',
+      }}
+    >
+      <div style={{
+        background: '#fff',
+        width: '100%',
+        maxWidth: '720px',
+        height: '82vh',
+        borderRadius: '20px 20px 0 0',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)',
+      }}>
+        {/* Modal header */}
+        <div style={{
+          padding: '1.2rem 1.5rem',
+          borderBottom: `3px solid ${persona.color}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.7rem',
+          background: '#fafbff',
+          flexShrink: 0,
+        }}>
+          <span style={{ fontSize: '1.4rem' }}>{persona.icon}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: persona.color, fontSize: '1rem' }}>{persona.name}</div>
+            <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '0.1rem' }}>{persona.role}</div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#bbb',
+              cursor: 'pointer',
+              fontSize: '1.4rem',
+              lineHeight: 1,
+              padding: '0.2rem',
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.2rem',
+        }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            }}>
+              {msg.role === 'assistant' && (
+                <span style={{ fontSize: '1.1rem', marginRight: '0.5rem', marginTop: '0.1rem', flexShrink: 0 }}>{persona.icon}</span>
+              )}
+              <div style={{
+                maxWidth: '80%',
+                padding: '0.9rem 1.1rem',
+                borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                background: msg.role === 'user' ? 'linear-gradient(135deg, #2a4a8a, #4a6ab0)' : '#f4f5fa',
+                color: msg.role === 'user' ? '#fff' : '#333',
+                fontSize: '0.88rem',
+                lineHeight: 1.7,
+              }}>
+                {formatChatResponse(msg.content, msg.role === 'assistant' ? persona.color : '#fff')}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>{persona.icon}</span>
+              <div style={{ display: 'flex', gap: '4px', padding: '0.6rem 0' }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: persona.color,
+                    animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+                  }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <form
+          onSubmit={handleSend}
+          style={{
+            padding: '1rem 1.2rem',
+            borderTop: '1px solid #e8ecf4',
+            display: 'flex',
+            gap: '0.8rem',
+            background: '#fafbff',
+            flexShrink: 0,
+          }}
+        >
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={`Ask ${persona.name} to go deeper...`}
+            autoFocus
+            style={{
+              flex: 1,
+              background: '#fff',
+              border: '1.5px solid #e0e4f0',
+              borderRadius: '10px',
+              padding: '0.7rem 1rem',
+              fontSize: '0.9rem',
+              color: '#1a1a2e',
+              outline: 'none',
+              fontFamily: 'inherit',
+            }}
+            onFocus={e => e.target.style.borderColor = persona.color}
+            onBlur={e => e.target.style.borderColor = '#e0e4f0'}
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || loading}
+            style={{
+              background: input.trim() && !loading ? persona.color : '#e8ecf4',
+              color: input.trim() && !loading ? '#fff' : '#bbb',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '0.7rem 1.2rem',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+              flexShrink: 0,
+            }}
+          >
+            Send
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Formatting ────────────────────────────────────────────────────────────────
+
+function formatChatResponse(text, color) {
+  return text.split('\n').map((line, i) => {
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return (
+        <div key={i} style={{ fontWeight: 700, color, marginTop: i > 0 ? '0.8rem' : 0, marginBottom: '0.3rem', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          {line.replace(/\*\*/g, '')}
+        </div>
+      )
+    }
+    if (line.startsWith('- ')) {
+      return <div key={i} style={{ paddingLeft: '1rem', marginBottom: '0.2rem' }}>· {line.slice(2)}</div>
+    }
+    return line ? <div key={i}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
+  })
+}
+
+function formatResponse(text, color) {
+  return text.split('\n').map((line, i) => {
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return (
+        <div key={i} style={{ fontWeight: 700, color, marginTop: i > 0 ? '1rem' : 0, marginBottom: '0.4rem', fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          {line.replace(/\*\*/g, '')}
+        </div>
+      )
+    }
+    if (line.startsWith('- ')) {
+      return <div key={i} style={{ paddingLeft: '1rem', color: '#666', marginBottom: '0.2rem' }}>· {line.slice(2)}</div>
+    }
+    return line ? <div key={i} style={{ color: '#555' }}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
+  })
+}
+
+// ── Persona Card ──────────────────────────────────────────────────────────────
+
+function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan, onDigDeeper }) {
   const color = persona?.color || '#aaa'
   const dimmed = panelRan && !selected
   const clickable = !panelRan && onToggle && persona
@@ -119,17 +372,11 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
       {/* Checkbox */}
       {!panelRan && persona && onToggle && (
         <div style={{
-          position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          width: '17px',
-          height: '17px',
-          borderRadius: '4px',
+          position: 'absolute', top: '1rem', right: '1rem',
+          width: '17px', height: '17px', borderRadius: '4px',
           border: `1.5px solid ${selected ? color : '#ccd0e0'}`,
           background: selected ? color : 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'all 0.15s',
         }}>
           {selected && <span style={{ color: '#fff', fontSize: '10px', fontWeight: 800 }}>✓</span>}
@@ -143,25 +390,14 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
         ) : (
           <span style={{ fontSize: '1.2rem' }}>{persona.icon}</span>
         )}
-        <span style={{
-          fontWeight: 600,
-          fontSize: '0.9rem',
-          color: discovering ? '#bbb' : selected ? color : '#888',
-          transition: 'color 0.2s',
-        }}>
+        <span style={{ fontWeight: 600, fontSize: '0.9rem', color: discovering ? '#bbb' : selected ? color : '#888', transition: 'color 0.2s' }}>
           {discovering ? 'Discovering...' : persona.name}
         </span>
       </div>
 
       {/* Accent bar */}
       {!discovering && (
-        <div style={{
-          height: '2px',
-          borderRadius: '2px',
-          background: selected ? color : '#e8ecf4',
-          transition: 'background 0.3s',
-          width: selected ? '40%' : '20%',
-        }} />
+        <div style={{ height: '2px', borderRadius: '2px', background: selected ? color : '#e8ecf4', transition: 'all 0.3s', width: selected ? '40%' : '20%' }} />
       )}
 
       {/* Content */}
@@ -169,78 +405,60 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '3px' }}>
             {[0,1,2].map(i => (
-              <div key={i} style={{
-                width: '5px', height: '5px', borderRadius: '50%',
-                background: color,
-                animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-              }} />
+              <div key={i} style={{ width: '5px', height: '5px', borderRadius: '50%', background: color, animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
             ))}
           </div>
           <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Thinking...</span>
         </div>
       )}
 
-      {discovering && (
-        <div style={{ color: '#bbb', fontSize: '0.8rem', fontStyle: 'italic' }}>Finding the right lens...</div>
-      )}
+      {discovering && <div style={{ color: '#bbb', fontSize: '0.8rem', fontStyle: 'italic' }}>Finding the right lens...</div>}
 
       {!loading && !discovering && !response && persona && (
-        <div style={{ color: '#aaa', fontSize: '0.82rem', lineHeight: 1.6, fontStyle: 'italic' }}>
-          {persona.role}
-        </div>
+        <div style={{ color: '#aaa', fontSize: '0.82rem', lineHeight: 1.6, fontStyle: 'italic' }}>{persona.role}</div>
       )}
 
       {response && !loading && !discovering && (
-        <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#444' }}>
-          {formatResponse(response, color)}
-        </div>
+        <>
+          <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#444' }}>
+            {formatResponse(response, color)}
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); onDigDeeper(persona, response) }}
+            style={{
+              marginTop: '0.4rem',
+              alignSelf: 'flex-start',
+              background: 'transparent',
+              border: `1.5px solid ${color}66`,
+              borderRadius: '8px',
+              padding: '0.4rem 0.9rem',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              color: color,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              fontFamily: 'inherit',
+            }}
+            onMouseEnter={e => { e.target.style.background = color; e.target.style.color = '#fff' }}
+            onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = color }}
+          >
+            Dig deeper →
+          </button>
+        </>
       )}
     </div>
   )
-}
-
-function formatResponse(text, color) {
-  return text.split('\n').map((line, i) => {
-    if (line.startsWith('**') && line.endsWith('**')) {
-      return (
-        <div key={i} style={{
-          fontWeight: 700,
-          color: color,
-          marginTop: i > 0 ? '1rem' : 0,
-          marginBottom: '0.4rem',
-          fontSize: '0.72rem',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-        }}>
-          {line.replace(/\*\*/g, '')}
-        </div>
-      )
-    }
-    if (line.startsWith('- ')) {
-      return (
-        <div key={i} style={{ paddingLeft: '1rem', color: '#666', marginBottom: '0.2rem' }}>
-          · {line.slice(2)}
-        </div>
-      )
-    }
-    return line ? <div key={i} style={{ color: '#555' }}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
-  })
 }
 
 function SectionLabel({ children }) {
   return (
-    <div style={{
-      fontSize: '0.68rem',
-      fontWeight: 700,
-      color: '#aab0c8',
-      letterSpacing: '0.12em',
-      textTransform: 'uppercase',
-      marginBottom: '1rem',
-    }}>
+    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#aab0c8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '1rem' }}>
       {children}
     </div>
   )
 }
+
+// ── Main App ──────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [idea, setIdea] = useState('')
@@ -253,6 +471,7 @@ export default function App() {
   const [discovering, setDiscovering] = useState(false)
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
+  const [activeChat, setActiveChat] = useState(null) // { persona, response }
 
   const allPersonas = [...PRESET_PERSONAS, PHILOSOPHER, ...(discovered || [])]
 
@@ -285,12 +504,10 @@ export default function App() {
     setDiscovering(true)
 
     try {
-      const raw = await anthropicCall(apiKey, DISCOVER_PERSONAS_PROMPT, idea.trim(), 600)
+      const raw = await anthropicCall(apiKey, DISCOVER_PERSONAS_PROMPT, [{ role: 'user', content: idea.trim() }], 600)
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
       const disc = JSON.parse(cleaned).personas.map((p, i) => ({
-        ...p,
-        id: `persona_${i}`,
-        color: PERSONA_COLORS[i % PERSONA_COLORS.length],
+        ...p, id: `persona_${i}`, color: PERSONA_COLORS[i % PERSONA_COLORS.length],
       }))
       setDiscovered(disc)
       setSelected(prev => {
@@ -314,7 +531,7 @@ export default function App() {
 
     toRun.forEach(p => {
       setLoading(prev => ({ ...prev, [p.id]: true }))
-      anthropicCall(apiKey, PERSONA_PROMPT_TEMPLATE(p.name, p.role, p.angle), idea.trim())
+      anthropicCall(apiKey, PERSONA_PROMPT_TEMPLATE(p.name, p.role, p.angle), [{ role: 'user', content: idea.trim() }])
         .then(text => setResponses(prev => ({ ...prev, [p.id]: text })))
         .catch(err => setResponses(prev => ({ ...prev, [p.id]: `Error: ${err.message}` })))
         .finally(() => setLoading(prev => ({ ...prev, [p.id]: false })))
@@ -334,7 +551,7 @@ export default function App() {
 
   return (
     <div>
-      {/* Hero header */}
+      {/* Hero */}
       <div style={{
         height: '340px',
         borderRadius: '0 0 24px 24px',
@@ -347,48 +564,20 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
         justifyContent: 'flex-start',
         paddingTop: '3.5rem',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        {/* Dark overlay for text legibility */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, rgba(10,20,40,0.45) 0%, rgba(10,20,40,0.65) 100%)',
-        }} />
-
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(10,20,40,0.45) 0%, rgba(10,20,40,0.65) 100%)' }} />
         <div style={{ position: 'relative', textAlign: 'center', padding: '0 2rem' }}>
-          <div style={{
-            fontSize: '0.7rem',
-            fontWeight: 600,
-            letterSpacing: '0.22em',
-            textTransform: 'uppercase',
-            color: 'rgba(255,255,255,0.4)',
-            marginBottom: '1rem',
-          }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '1rem' }}>
             Broaden your perspective
           </div>
-          <h1 style={{
-            fontSize: 'clamp(3rem, 7vw, 5rem)',
-            fontWeight: 700,
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-            color: '#fff',
-            marginBottom: '1.2rem',
-            textShadow: '0 2px 40px rgba(100,140,255,0.3)',
-          }}>
+          <h1 style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: '#fff', marginBottom: '1.2rem', textShadow: '0 2px 40px rgba(100,140,255,0.3)' }}>
             Elevation
           </h1>
-          <p style={{
-            color: 'rgba(255,255,255,0.5)',
-            fontSize: '1rem',
-            maxWidth: '380px',
-            margin: '0 auto',
-            lineHeight: 1.65,
-            fontWeight: 300,
-          }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', maxWidth: '380px', margin: '0 auto', lineHeight: 1.65, fontWeight: 300 }}>
             Sometimes, all you need is a little Elevation to broaden your perspective.
           </p>
         </div>
@@ -396,40 +585,10 @@ export default function App() {
 
       {/* API Key */}
       {showKeyInput && (
-        <div style={{
-          background: '#fff',
-          border: '1px solid #e0e4f0',
-          borderRadius: '12px',
-          padding: '1rem 1.2rem',
-          marginBottom: '2rem',
-          display: 'flex',
-          gap: '0.8rem',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-        }}>
+        <div style={{ background: '#fff', border: '1px solid #e0e4f0', borderRadius: '12px', padding: '1rem 1.2rem', marginBottom: '2rem', display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <span style={{ color: '#aaa', fontSize: '0.82rem', flexShrink: 0 }}>API key</span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-            placeholder="sk-ant-..."
-            style={{
-              flex: 1,
-              minWidth: '200px',
-              background: '#f7f8fc',
-              border: '1px solid #e0e4f0',
-              borderRadius: '8px',
-              padding: '0.45rem 0.8rem',
-              color: '#1a1a2e',
-              fontSize: '0.82rem',
-              outline: 'none',
-              fontFamily: 'inherit',
-            }}
-          />
-          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem' }}>
-            Hide
-          </button>
+          <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="sk-ant-..." style={{ flex: 1, minWidth: '200px', background: '#f7f8fc', border: '1px solid #e0e4f0', borderRadius: '8px', padding: '0.45rem 0.8rem', color: '#1a1a2e', fontSize: '0.82rem', outline: 'none', fontFamily: 'inherit' }} />
+          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem' }}>Hide</button>
         </div>
       )}
 
@@ -438,21 +597,11 @@ export default function App() {
         <SectionLabel>Political perspectives</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {PRESET_PERSONAS.map(p => (
-            <PersonaCard
-              key={p.id}
-              persona={p}
-              response={responses[p.id]}
-              loading={loading[p.id]}
-              discovering={false}
-              selected={selected.has(p.id)}
-              onToggle={togglePersona}
-              panelRan={panelRan}
-            />
+            <PersonaCard key={p.id} persona={p} response={responses[p.id]} loading={loading[p.id]} discovering={false} selected={selected.has(p.id)} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} />
           ))}
         </div>
       </div>
 
-      {/* Divider */}
       <div style={{ height: '1px', background: '#e8ecf4', marginBottom: '2.5rem' }} />
 
       {/* Idea input */}
@@ -464,68 +613,18 @@ export default function App() {
             onChange={e => setIdea(e.target.value)}
             placeholder="What's on your mind? Describe your idea, decision, or problem..."
             rows={4}
-            style={{
-              width: '100%',
-              background: '#fff',
-              border: '1.5px solid #e0e4f0',
-              borderRadius: '12px',
-              padding: '1rem 1.1rem',
-              color: '#1a1a2e',
-              fontSize: '0.95rem',
-              resize: 'vertical',
-              outline: 'none',
-              marginBottom: '1rem',
-              lineHeight: 1.65,
-              fontFamily: 'inherit',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-              transition: 'border-color 0.2s',
-            }}
+            style={{ width: '100%', background: '#fff', border: '1.5px solid #e0e4f0', borderRadius: '12px', padding: '1rem 1.1rem', color: '#1a1a2e', fontSize: '0.95rem', resize: 'vertical', outline: 'none', marginBottom: '1rem', lineHeight: 1.65, fontFamily: 'inherit', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', transition: 'border-color 0.2s' }}
             onFocus={e => e.target.style.borderColor = '#7090d0'}
             onBlur={e => e.target.style.borderColor = '#e0e4f0'}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
           />
-
           <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="submit"
-              disabled={discovering || anyLoading || !idea.trim()}
-              style={{
-                background: 'transparent',
-                color: discovering || anyLoading || !idea.trim() ? '#ccc' : '#4a6ab0',
-                border: `1.5px solid ${discovering || anyLoading || !idea.trim() ? '#e8ecf4' : '#a0b8e8'}`,
-                borderRadius: '8px',
-                padding: '0.65rem 1.2rem',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s',
-                fontFamily: 'inherit',
-              }}
-            >
+            <button type="submit" disabled={discovering || anyLoading || !idea.trim()} style={{ background: 'transparent', color: discovering || anyLoading || !idea.trim() ? '#ccc' : '#4a6ab0', border: `1.5px solid ${discovering || anyLoading || !idea.trim() ? '#e8ecf4' : '#a0b8e8'}`, borderRadius: '8px', padding: '0.65rem 1.2rem', fontSize: '0.85rem', fontWeight: 500, cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s', fontFamily: 'inherit' }}>
               {discovering ? 'Discovering...' : '+ Discover context-specific lenses'}
             </button>
-
-            <button
-              type="button"
-              onClick={handleRunPanel}
-              disabled={!canRun}
-              style={{
-                background: canRun ? 'linear-gradient(135deg, #2a4a8a, #4a6ab0)' : '#e8ecf4',
-                color: canRun ? '#fff' : '#bbb',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '0.65rem 1.4rem',
-                fontSize: '0.85rem',
-                fontWeight: 600,
-                cursor: canRun ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s',
-                boxShadow: canRun ? '0 4px 16px rgba(42,74,138,0.3)' : 'none',
-                fontFamily: 'inherit',
-              }}
-            >
+            <button type="button" onClick={handleRunPanel} disabled={!canRun} style={{ background: canRun ? 'linear-gradient(135deg, #2a4a8a, #4a6ab0)' : '#e8ecf4', color: canRun ? '#fff' : '#bbb', border: 'none', borderRadius: '8px', padding: '0.65rem 1.4rem', fontSize: '0.85rem', fontWeight: 600, cursor: canRun ? 'pointer' : 'not-allowed', transition: 'all 0.2s', boxShadow: canRun ? '0 4px 16px rgba(42,74,138,0.3)' : 'none', fontFamily: 'inherit' }}>
               {anyLoading ? 'Running...' : `Elevate${selected.size > 0 ? ` · ${selected.size} selected` : ''}`}
             </button>
-
           </div>
           {error && <p style={{ color: '#c94f4f', marginTop: '0.6rem', fontSize: '0.82rem' }}>{error}</p>}
         </form>
@@ -536,16 +635,7 @@ export default function App() {
         <SectionLabel>Philosophical & context-specific lenses</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {displayDiscovered.map((p, i) => (
-            <PersonaCard
-              key={p?.id || i}
-              persona={p}
-              response={p ? responses[p.id] : null}
-              loading={p ? loading[p.id] : false}
-              discovering={!p}
-              selected={p ? selected.has(p.id) : false}
-              onToggle={togglePersona}
-              panelRan={panelRan}
-            />
+            <PersonaCard key={p?.id || i} persona={p} response={p ? responses[p.id] : null} loading={p ? loading[p.id] : false} discovering={!p} selected={p ? selected.has(p.id) : false} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} />
           ))}
         </div>
       </div>
@@ -553,30 +643,25 @@ export default function App() {
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
         <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8ecf4' }}>
-          <button
-            onClick={() => { setPanelRan(false); setResponses({}) }}
-            style={{ background: '#fff', border: '1px solid #e0e4f0', color: '#888', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
-          >
-            Adjust selection
-          </button>
-          <button
-            onClick={handleReset}
-            style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
-          >
-            Start over
-          </button>
+          <button onClick={() => { setPanelRan(false); setResponses({}) }} style={{ background: '#fff', border: '1px solid #e0e4f0', color: '#888', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Adjust selection</button>
+          <button onClick={handleReset} style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Start over</button>
         </div>
       )}
 
+      {/* Chat modal */}
+      {activeChat && (
+        <ChatModal
+          persona={activeChat.persona}
+          initialResponse={activeChat.response}
+          originalIdea={idea}
+          apiKey={apiKey}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
+
       <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 0.8; }
-        }
-        @keyframes bounce {
-          0%, 80%, 100% { transform: translateY(0); }
-          40% { transform: translateY(-4px); }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-4px); } }
       `}</style>
     </div>
   )
