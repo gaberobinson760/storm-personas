@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
-const PERSONA_COLORS = ['#7b9ff9', '#f97b7b', '#7bf9a8', '#c47bf9', '#f9c47b', '#7bf9f9']
+const PERSONA_COLORS = ['#3b6fd4', '#c94f4f', '#2e9e5e', '#8b4fc9', '#c97a2e', '#2e8fa0']
 
 const PHILOSOPHER = {
   id: 'preset_philosopher',
   name: 'The Philosopher',
   icon: '🏛️',
-  color: '#b8a99a',
+  color: '#7a6a5a',
   role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
   angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
 }
@@ -16,7 +16,7 @@ const PRESET_PERSONAS = [
     id: 'preset_progressive',
     name: 'The Progressive',
     icon: '🌿',
-    color: '#7bf9a8',
+    color: '#2e9e5e',
     role: 'A progressive thinker focused on equity, systemic change, collective wellbeing, and challenging existing power structures.',
     angle: 'Who benefits and who is left out? What systemic barriers does this ignore? How does this address or perpetuate inequality?',
   },
@@ -24,7 +24,7 @@ const PRESET_PERSONAS = [
     id: 'preset_moderate',
     name: 'The Moderate',
     icon: '⚖️',
-    color: '#f9e07b',
+    color: '#b8860b',
     role: 'A centrist focused on pragmatic compromise, weighing tradeoffs, and finding common ground across divides.',
     angle: 'What are the legitimate concerns on both sides? Where is the pragmatic middle ground? What would actually get broad buy-in?',
   },
@@ -32,7 +32,7 @@ const PRESET_PERSONAS = [
     id: 'preset_conservative',
     name: 'The Conservative',
     icon: '🏔️',
-    color: '#f9a87b',
+    color: '#b85a1a',
     role: 'A conservative thinker grounded in tradition, personal responsibility, institutional stability, and skepticism of rapid change.',
     angle: 'What time-tested principles does this risk undermining? What unintended consequences come from moving too fast? What works about the status quo that is worth preserving?',
   },
@@ -93,7 +93,7 @@ async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
 }
 
 function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan }) {
-  const color = persona?.color || '#333'
+  const color = persona?.color || '#aaa'
   const dimmed = panelRan && !selected
   const clickable = !panelRan && onToggle && persona
 
@@ -101,66 +101,65 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
     <div
       onClick={() => clickable && onToggle(persona.id)}
       style={{
-        background: selected
-          ? `linear-gradient(145deg, #111118, #0e0e18)`
-          : '#0c0c14',
-        border: `1px solid ${selected ? color + '55' : '#1c1c2a'}`,
-        borderRadius: '16px',
-        padding: '1.4rem',
+        background: selected ? '#fff' : '#f7f8fc',
+        border: `1.5px solid ${selected ? color + 'aa' : '#e0e4f0'}`,
+        borderRadius: '14px',
+        padding: '1.3rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '0.9rem',
+        gap: '0.8rem',
         transition: 'all 0.2s ease',
-        opacity: dimmed ? 0.25 : 1,
+        opacity: dimmed ? 0.3 : 1,
         cursor: clickable ? 'pointer' : 'default',
         position: 'relative',
-        boxShadow: selected ? `0 0 24px ${color}18` : 'none',
+        boxShadow: selected ? `0 4px 20px ${color}22` : '0 1px 4px rgba(0,0,0,0.06)',
       }}
     >
       {/* Checkbox */}
       {!panelRan && persona && onToggle && (
         <div style={{
           position: 'absolute',
-          top: '1.1rem',
-          right: '1.1rem',
-          width: '16px',
-          height: '16px',
+          top: '1rem',
+          right: '1rem',
+          width: '17px',
+          height: '17px',
           borderRadius: '4px',
-          border: `1.5px solid ${selected ? color : '#333'}`,
+          border: `1.5px solid ${selected ? color : '#ccd0e0'}`,
           background: selected ? color : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'all 0.15s',
         }}>
-          {selected && <span style={{ color: '#000', fontSize: '10px', fontWeight: 800, lineHeight: 1 }}>✓</span>}
+          {selected && <span style={{ color: '#fff', fontSize: '10px', fontWeight: 800 }}>✓</span>}
         </div>
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingRight: '1.6rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', paddingRight: '1.5rem' }}>
         {discovering ? (
-          <div style={{ width: '1.3rem', height: '1.3rem', borderRadius: '50%', background: '#1c1c2a', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '1.2rem', height: '1.2rem', borderRadius: '50%', background: '#e0e4f0', animation: 'pulse 1.5s infinite' }} />
         ) : (
-          <span style={{ fontSize: '1.25rem' }}>{persona.icon}</span>
+          <span style={{ fontSize: '1.2rem' }}>{persona.icon}</span>
         )}
         <span style={{
           fontWeight: 600,
           fontSize: '0.9rem',
-          color: discovering ? '#333' : selected ? color : '#555',
-          letterSpacing: '0.01em',
+          color: discovering ? '#bbb' : selected ? color : '#888',
           transition: 'color 0.2s',
         }}>
           {discovering ? 'Discovering...' : persona.name}
         </span>
       </div>
 
-      {/* Accent line */}
+      {/* Accent bar */}
       {!discovering && (
         <div style={{
-          height: '1px',
-          background: selected ? `linear-gradient(90deg, ${color}55, transparent)` : '#1c1c2a',
+          height: '2px',
+          borderRadius: '2px',
+          background: selected ? color : '#e8ecf4',
           transition: 'background 0.3s',
+          width: selected ? '40%' : '20%',
         }} />
       )}
 
@@ -170,30 +169,28 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
           <div style={{ display: 'flex', gap: '3px' }}>
             {[0,1,2].map(i => (
               <div key={i} style={{
-                width: '4px', height: '4px', borderRadius: '50%',
+                width: '5px', height: '5px', borderRadius: '50%',
                 background: color,
                 animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
               }} />
             ))}
           </div>
-          <span style={{ color: '#444', fontSize: '0.8rem' }}>Thinking...</span>
+          <span style={{ color: '#aaa', fontSize: '0.8rem' }}>Thinking...</span>
         </div>
       )}
 
       {discovering && (
-        <div style={{ color: '#333', fontSize: '0.8rem', fontStyle: 'italic' }}>
-          Finding the right lens...
-        </div>
+        <div style={{ color: '#bbb', fontSize: '0.8rem', fontStyle: 'italic' }}>Finding the right lens...</div>
       )}
 
       {!loading && !discovering && !response && persona && (
-        <div style={{ color: '#3a3a4a', fontSize: '0.82rem', lineHeight: 1.6, fontStyle: 'italic' }}>
+        <div style={{ color: '#aaa', fontSize: '0.82rem', lineHeight: 1.6, fontStyle: 'italic' }}>
           {persona.role}
         </div>
       )}
 
       {response && !loading && !discovering && (
-        <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#aaa' }}>
+        <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#444' }}>
           {formatResponse(response, color)}
         </div>
       )}
@@ -210,8 +207,8 @@ function formatResponse(text, color) {
           color: color,
           marginTop: i > 0 ? '1rem' : 0,
           marginBottom: '0.4rem',
-          fontSize: '0.78rem',
-          letterSpacing: '0.05em',
+          fontSize: '0.72rem',
+          letterSpacing: '0.06em',
           textTransform: 'uppercase',
         }}>
           {line.replace(/\*\*/g, '')}
@@ -220,12 +217,12 @@ function formatResponse(text, color) {
     }
     if (line.startsWith('- ')) {
       return (
-        <div key={i} style={{ paddingLeft: '1rem', color: '#888', marginBottom: '0.2rem' }}>
+        <div key={i} style={{ paddingLeft: '1rem', color: '#666', marginBottom: '0.2rem' }}>
           · {line.slice(2)}
         </div>
       )
     }
-    return line ? <div key={i} style={{ color: '#bbb' }}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
+    return line ? <div key={i} style={{ color: '#555' }}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
   })
 }
 
@@ -233,8 +230,8 @@ function SectionLabel({ children }) {
   return (
     <div style={{
       fontSize: '0.68rem',
-      fontWeight: 600,
-      color: '#333',
+      fontWeight: 700,
+      color: '#aab0c8',
       letterSpacing: '0.12em',
       textTransform: 'uppercase',
       marginBottom: '1rem',
@@ -336,48 +333,67 @@ export default function App() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
-        <div style={{
-          display: 'inline-block',
-          fontSize: '0.7rem',
-          fontWeight: 600,
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color: '#4a4a6a',
-          marginBottom: '0.8rem',
-        }}>
-          Broaden your perspective
+      {/* Hero header */}
+      <div style={{
+        height: '340px',
+        borderRadius: '0 0 24px 24px',
+        marginLeft: '-1.5rem',
+        marginRight: '-1.5rem',
+        marginBottom: '2.5rem',
+        background: 'linear-gradient(160deg, #1a2a4a 0%, #2a3a6a 40%, #4a6a9a 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* Subtle mountain silhouette shapes */}
+        <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%' }} viewBox="0 0 1200 180" preserveAspectRatio="none">
+          <polygon points="0,180 200,60 400,120 600,20 800,90 1000,40 1200,100 1200,180" fill="rgba(255,255,255,0.04)" />
+          <polygon points="0,180 150,100 350,150 550,70 750,130 950,60 1200,120 1200,180" fill="rgba(255,255,255,0.03)" />
+        </svg>
+
+        <div style={{ position: 'relative', textAlign: 'center', padding: '0 2rem' }}>
+          <div style={{
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            letterSpacing: '0.22em',
+            textTransform: 'uppercase',
+            color: 'rgba(255,255,255,0.4)',
+            marginBottom: '1rem',
+          }}>
+            Broaden your perspective
+          </div>
+          <h1 style={{
+            fontSize: 'clamp(3rem, 7vw, 5rem)',
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            lineHeight: 1,
+            color: '#fff',
+            marginBottom: '1.2rem',
+            textShadow: '0 2px 40px rgba(100,140,255,0.3)',
+          }}>
+            Elevation
+          </h1>
+          <p style={{
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: '1rem',
+            maxWidth: '380px',
+            margin: '0 auto',
+            lineHeight: 1.65,
+            fontWeight: 300,
+          }}>
+            Sometimes, all you need is a little Elevation to broaden your perspective.
+          </p>
         </div>
-        <h1 style={{
-          fontSize: 'clamp(2.8rem, 6vw, 4.5rem)',
-          fontWeight: 700,
-          letterSpacing: '-0.03em',
-          lineHeight: 1,
-          background: 'linear-gradient(135deg, #e8e8ff 0%, #9090cc 50%, #5050aa 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          marginBottom: '1rem',
-        }}>
-          Elevation
-        </h1>
-        <p style={{
-          color: '#3a3a5a',
-          fontSize: '0.95rem',
-          maxWidth: '420px',
-          margin: '0 auto',
-          lineHeight: 1.6,
-        }}>
-          Sometimes, all you need is a little Elevation to broaden your perspective.
-        </p>
       </div>
 
       {/* API Key */}
       {showKeyInput && (
         <div style={{
-          background: '#0c0c14',
-          border: '1px solid #1c1c2a',
+          background: '#fff',
+          border: '1px solid #e0e4f0',
           borderRadius: '12px',
           padding: '1rem 1.2rem',
           marginBottom: '2rem',
@@ -385,8 +401,9 @@ export default function App() {
           gap: '0.8rem',
           alignItems: 'center',
           flexWrap: 'wrap',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         }}>
-          <span style={{ color: '#444', fontSize: '0.82rem', flexShrink: 0 }}>API key</span>
+          <span style={{ color: '#aaa', fontSize: '0.82rem', flexShrink: 0 }}>API key</span>
           <input
             type="password"
             value={apiKey}
@@ -395,16 +412,17 @@ export default function App() {
             style={{
               flex: 1,
               minWidth: '200px',
-              background: '#080810',
-              border: '1px solid #1c1c2a',
+              background: '#f7f8fc',
+              border: '1px solid #e0e4f0',
               borderRadius: '8px',
               padding: '0.45rem 0.8rem',
-              color: '#e8e8e8',
+              color: '#1a1a2e',
               fontSize: '0.82rem',
               outline: 'none',
+              fontFamily: 'inherit',
             }}
           />
-          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#333', cursor: 'pointer', fontSize: '0.75rem' }}>
+          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem' }}>
             Hide
           </button>
         </div>
@@ -430,7 +448,7 @@ export default function App() {
       </div>
 
       {/* Divider */}
-      <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #1c1c2a, transparent)', marginBottom: '2.5rem' }} />
+      <div style={{ height: '1px', background: '#e8ecf4', marginBottom: '2.5rem' }} />
 
       {/* Idea input */}
       <div style={{ marginBottom: '2.5rem' }}>
@@ -443,21 +461,22 @@ export default function App() {
             rows={4}
             style={{
               width: '100%',
-              background: '#0c0c14',
-              border: '1px solid #1c1c2a',
+              background: '#fff',
+              border: '1.5px solid #e0e4f0',
               borderRadius: '12px',
               padding: '1rem 1.1rem',
-              color: '#e8e8e8',
+              color: '#1a1a2e',
               fontSize: '0.95rem',
               resize: 'vertical',
               outline: 'none',
               marginBottom: '1rem',
               lineHeight: 1.65,
               fontFamily: 'inherit',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
               transition: 'border-color 0.2s',
             }}
-            onFocus={e => e.target.style.borderColor = '#2c2c4a'}
-            onBlur={e => e.target.style.borderColor = '#1c1c2a'}
+            onFocus={e => e.target.style.borderColor = '#7090d0'}
+            onBlur={e => e.target.style.borderColor = '#e0e4f0'}
             onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
           />
 
@@ -467,8 +486,8 @@ export default function App() {
               disabled={discovering || anyLoading || !idea.trim()}
               style={{
                 background: 'transparent',
-                color: discovering || anyLoading || !idea.trim() ? '#333' : '#6060aa',
-                border: `1px solid ${discovering || anyLoading || !idea.trim() ? '#1c1c2a' : '#3a3a6a'}`,
+                color: discovering || anyLoading || !idea.trim() ? '#ccc' : '#4a6ab0',
+                border: `1.5px solid ${discovering || anyLoading || !idea.trim() ? '#e8ecf4' : '#a0b8e8'}`,
                 borderRadius: '8px',
                 padding: '0.65rem 1.2rem',
                 fontSize: '0.85rem',
@@ -486,18 +505,16 @@ export default function App() {
               onClick={handleRunPanel}
               disabled={!canRun}
               style={{
-                background: canRun
-                  ? 'linear-gradient(135deg, #5050aa, #7070cc)'
-                  : '#0c0c14',
-                color: canRun ? '#fff' : '#2a2a3a',
-                border: canRun ? 'none' : '1px solid #1c1c2a',
+                background: canRun ? 'linear-gradient(135deg, #2a4a8a, #4a6ab0)' : '#e8ecf4',
+                color: canRun ? '#fff' : '#bbb',
+                border: 'none',
                 borderRadius: '8px',
                 padding: '0.65rem 1.4rem',
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: canRun ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s',
-                boxShadow: canRun ? '0 4px 20px #5050aa44' : 'none',
+                boxShadow: canRun ? '0 4px 16px rgba(42,74,138,0.3)' : 'none',
                 fontFamily: 'inherit',
               }}
             >
@@ -505,12 +522,12 @@ export default function App() {
             </button>
 
             {!showKeyInput && (
-              <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#2a2a3a', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
                 API key
               </button>
             )}
           </div>
-          {error && <p style={{ color: '#f97b7b', marginTop: '0.6rem', fontSize: '0.82rem' }}>{error}</p>}
+          {error && <p style={{ color: '#c94f4f', marginTop: '0.6rem', fontSize: '0.82rem' }}>{error}</p>}
         </form>
       </div>
 
@@ -535,16 +552,16 @@ export default function App() {
 
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #1c1c2a' }}>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8ecf4' }}>
           <button
             onClick={() => { setPanelRan(false); setResponses({}) }}
-            style={{ background: 'transparent', border: '1px solid #1c1c2a', color: '#444', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+            style={{ background: '#fff', border: '1px solid #e0e4f0', color: '#888', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
           >
             Adjust selection
           </button>
           <button
             onClick={handleReset}
-            style={{ background: 'transparent', border: 'none', color: '#333', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
+            style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
           >
             Start over
           </button>
@@ -553,8 +570,8 @@ export default function App() {
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.5; }
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 0.8; }
         }
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); }
