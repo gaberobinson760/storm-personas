@@ -58,27 +58,55 @@ async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
   return data.content[0].text
 }
 
-function PersonaCard({ persona, response, loading, discovering }) {
+function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan }) {
   const color = persona?.color || '#555'
+  const dimmed = panelRan && !selected
 
   return (
-    <div style={{
-      background: '#1a1a1a',
-      border: `1px solid ${loading || response ? color + '44' : '#2a2a2a'}`,
-      borderRadius: '12px',
-      padding: '1.5rem',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem',
-      transition: 'border-color 0.3s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+    <div
+      onClick={() => !panelRan && onToggle && onToggle(persona.id)}
+      style={{
+        background: '#1a1a1a',
+        border: `1px solid ${selected ? color + '88' : '#2a2a2a'}`,
+        borderRadius: '12px',
+        padding: '1.5rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+        transition: 'border-color 0.2s, opacity 0.2s',
+        opacity: dimmed ? 0.35 : 1,
+        cursor: (!panelRan && onToggle && persona) ? 'pointer' : 'default',
+        position: 'relative',
+      }}
+    >
+      {/* Checkbox */}
+      {!panelRan && persona && onToggle && (
+        <div style={{
+          position: 'absolute',
+          top: '1rem',
+          right: '1rem',
+          width: '18px',
+          height: '18px',
+          borderRadius: '4px',
+          border: `2px solid ${selected ? color : '#444'}`,
+          background: selected ? color : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s',
+          flexShrink: 0,
+        }}>
+          {selected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingRight: '1.8rem' }}>
         {discovering ? (
           <div style={{ width: '1.4rem', height: '1.4rem', borderRadius: '50%', background: '#2a2a2a', animation: 'pulse 1.5s infinite' }} />
         ) : (
           <span style={{ fontSize: '1.4rem' }}>{persona.icon}</span>
         )}
-        <span style={{ fontWeight: 600, color, fontSize: '1rem' }}>
+        <span style={{ fontWeight: 600, color: selected ? color : '#666', fontSize: '1rem', transition: 'color 0.2s' }}>
           {discovering ? <span style={{ color: '#444' }}>Discovering...</span> : persona.name}
         </span>
       </div>
@@ -89,15 +117,15 @@ function PersonaCard({ persona, response, loading, discovering }) {
         </div>
       )}
 
-      {response && !loading && !discovering && (
-        <div style={{ fontSize: '0.88rem', lineHeight: 1.7, color: '#ccc', whiteSpace: 'pre-wrap' }}>
-          {formatResponse(response)}
+      {!loading && !discovering && !response && persona && (
+        <div style={{ color: '#555', fontSize: '0.85rem', fontStyle: 'italic' }}>
+          {persona.role}
         </div>
       )}
 
-      {!loading && !discovering && !response && persona && (
-        <div style={{ color: '#333', fontSize: '0.85rem', fontStyle: 'italic' }}>
-          {persona.role}
+      {response && !loading && !discovering && (
+        <div style={{ fontSize: '0.88rem', lineHeight: 1.7, color: '#ccc' }}>
+          {formatResponse(response)}
         </div>
       )}
     </div>
@@ -125,12 +153,22 @@ export default function App() {
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_ANTHROPIC_API_KEY || '')
   const [showKeyInput, setShowKeyInput] = useState(!import.meta.env.VITE_ANTHROPIC_API_KEY)
   const [personas, setPersonas] = useState(null)
+  const [selected, setSelected] = useState(new Set())
   const [responses, setResponses] = useState({})
   const [loading, setLoading] = useState({})
   const [discovering, setDiscovering] = useState(false)
+  const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
 
-  async function handleSubmit(e) {
+  function togglePersona(id) {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  async function handleDiscover(e) {
     e.preventDefault()
     if (!idea.trim()) return
     if (!apiKey.trim()) { setError('Enter your Anthropic API key first.'); return }
@@ -138,45 +176,44 @@ export default function App() {
     setError('')
     setResponses({})
     setPersonas(null)
+    setSelected(new Set())
     setLoading({})
+    setPanelRan(false)
     setDiscovering(true)
 
-    let discovered
     try {
       const raw = await anthropicCall(apiKey, DISCOVER_PERSONAS_PROMPT, idea.trim(), 600)
-      // Strip markdown fences if present
       const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-      discovered = JSON.parse(cleaned).personas.map((p, i) => ({
+      const discovered = JSON.parse(cleaned).personas.map((p, i) => ({
         ...p,
         id: `persona_${i}`,
         color: PERSONA_COLORS[i % PERSONA_COLORS.length],
       }))
+      setPersonas(discovered)
+      setSelected(new Set(discovered.map(p => p.id)))
     } catch (err) {
       setError(`Failed to discover personas: ${err.message}`)
+    } finally {
       setDiscovering(false)
-      return
     }
+  }
 
-    setDiscovering(false)
-    setPersonas(discovered)
+  async function handleRunPanel() {
+    if (!personas || selected.size === 0) return
+    const toRun = personas.filter(p => selected.has(p.id))
+    setResponses({})
+    setPanelRan(true)
 
-    // Fan out to all personas in parallel
-    discovered.forEach(p => {
+    toRun.forEach(p => {
       setLoading(prev => ({ ...prev, [p.id]: true }))
-      anthropicCall(
-        apiKey,
-        PERSONA_PROMPT_TEMPLATE(p.name, p.role, p.angle),
-        idea.trim()
-      )
+      anthropicCall(apiKey, PERSONA_PROMPT_TEMPLATE(p.name, p.role, p.angle), idea.trim())
         .then(text => setResponses(prev => ({ ...prev, [p.id]: text })))
         .catch(err => setResponses(prev => ({ ...prev, [p.id]: `Error: ${err.message}` })))
         .finally(() => setLoading(prev => ({ ...prev, [p.id]: false })))
     })
   }
 
-  const anyActive = discovering || Object.values(loading).some(Boolean)
-
-  // Show placeholder cards while discovering
+  const anyLoading = Object.values(loading).some(Boolean)
   const displayPersonas = personas || (discovering ? Array(4).fill(null) : null)
 
   return (
@@ -184,7 +221,7 @@ export default function App() {
       <div style={{ marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>STORM Personas</h1>
         <p style={{ color: '#666', fontSize: '0.95rem' }}>
-          Drop in an idea. The right expert lenses are identified for your specific context, then each gives you their honest read.
+          Drop in an idea. Pick which lenses to run it through. Get honest reads from each.
         </p>
       </div>
 
@@ -224,7 +261,7 @@ export default function App() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
+      <form onSubmit={handleDiscover} style={{ marginBottom: '1.5rem' }}>
         <textarea
           value={idea}
           onChange={e => setIdea(e.target.value)}
@@ -243,12 +280,12 @@ export default function App() {
             marginBottom: '1rem',
             lineHeight: 1.6,
           }}
-          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSubmit(e) }}
+          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
         />
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button
             type="submit"
-            disabled={anyActive || !idea.trim()}
+            disabled={discovering || anyLoading || !idea.trim()}
             style={{
               background: '#4f8ef7',
               color: '#fff',
@@ -257,35 +294,97 @@ export default function App() {
               padding: '0.7rem 1.6rem',
               fontSize: '0.95rem',
               fontWeight: 600,
-              cursor: anyActive || !idea.trim() ? 'not-allowed' : 'pointer',
-              opacity: anyActive || !idea.trim() ? 0.5 : 1,
+              cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer',
+              opacity: discovering || anyLoading || !idea.trim() ? 0.5 : 1,
               transition: 'opacity 0.2s',
             }}
           >
-            {discovering ? 'Finding the right lenses...' : anyActive ? 'Analyzing...' : 'Run the panel'}
+            {discovering ? 'Finding lenses...' : 'Discover personas'}
           </button>
           {!showKeyInput && (
             <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}>
               API key
             </button>
           )}
-          <span style={{ fontSize: '0.75rem', color: '#444' }}>⌘↵ to submit</span>
+          <span style={{ fontSize: '0.75rem', color: '#444' }}>⌘↵ to discover</span>
         </div>
         {error && <p style={{ color: '#e05c5c', marginTop: '0.6rem', fontSize: '0.85rem' }}>{error}</p>}
       </form>
 
       {displayPersonas && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.2rem' }}>
-          {displayPersonas.map((p, i) => (
-            <PersonaCard
-              key={p?.id || i}
-              persona={p}
-              response={p ? responses[p.id] : null}
-              loading={p ? loading[p.id] : false}
-              discovering={discovering || !p}
-            />
-          ))}
-        </div>
+        <>
+          {/* Selection controls */}
+          {personas && !panelRan && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <span style={{ color: '#666', fontSize: '0.85rem' }}>
+                {selected.size} of {personas.length} selected
+              </span>
+              <button
+                onClick={() => setSelected(new Set(personas.map(p => p.id)))}
+                style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Select all
+              </button>
+              <button
+                onClick={() => setSelected(new Set())}
+                style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleRunPanel}
+                disabled={selected.size === 0 || anyLoading}
+                style={{
+                  marginLeft: 'auto',
+                  background: selected.size === 0 ? '#222' : '#4ec97a',
+                  color: selected.size === 0 ? '#444' : '#000',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.6rem 1.4rem',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  cursor: selected.size === 0 || anyLoading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Run {selected.size > 0 ? `${selected.size} ` : ''}selected
+              </button>
+            </div>
+          )}
+
+          {/* Reset after panel ran */}
+          {panelRan && !anyLoading && (
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+              <button
+                onClick={() => { setPanelRan(false); setResponses({}); setSelected(new Set(personas.map(p => p.id))) }}
+                style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Adjust selection
+              </button>
+              <button
+                onClick={() => { setPersonas(null); setResponses({}); setSelected(new Set()); setPanelRan(false) }}
+                style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}
+              >
+                Start over
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.2rem' }}>
+            {displayPersonas.map((p, i) => (
+              <PersonaCard
+                key={p?.id || i}
+                persona={p}
+                response={p ? responses[p.id] : null}
+                loading={p ? loading[p.id] : false}
+                discovering={discovering || !p}
+                selected={p ? selected.has(p.id) : false}
+                onToggle={togglePersona}
+                panelRan={panelRan}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <style>{`
