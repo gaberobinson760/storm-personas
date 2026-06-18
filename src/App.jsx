@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
-const PERSONA_COLORS = ['#4f8ef7', '#e05c5c', '#4ec97a', '#c97ae0', '#f7a84f', '#4fc9c9']
+const PERSONA_COLORS = ['#7b9ff9', '#f97b7b', '#7bf9a8', '#c47bf9', '#f9c47b', '#7bf9f9']
 
 const PHILOSOPHER = {
   id: 'preset_philosopher',
   name: 'The Philosopher',
   icon: '🏛️',
-  color: '#a0897a',
+  color: '#b8a99a',
   role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
   angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
 }
@@ -16,7 +16,7 @@ const PRESET_PERSONAS = [
     id: 'preset_progressive',
     name: 'The Progressive',
     icon: '🌿',
-    color: '#4ec97a',
+    color: '#7bf9a8',
     role: 'A progressive thinker focused on equity, systemic change, collective wellbeing, and challenging existing power structures.',
     angle: 'Who benefits and who is left out? What systemic barriers does this ignore? How does this address or perpetuate inequality?',
   },
@@ -24,7 +24,7 @@ const PRESET_PERSONAS = [
     id: 'preset_moderate',
     name: 'The Moderate',
     icon: '⚖️',
-    color: '#c9b84f',
+    color: '#f9e07b',
     role: 'A centrist focused on pragmatic compromise, weighing tradeoffs, and finding common ground across divides.',
     angle: 'What are the legitimate concerns on both sides? Where is the pragmatic middle ground? What would actually get broad buy-in?',
   },
@@ -32,7 +32,7 @@ const PRESET_PERSONAS = [
     id: 'preset_conservative',
     name: 'The Conservative',
     icon: '🏔️',
-    color: '#c97a4f',
+    color: '#f9a87b',
     role: 'A conservative thinker grounded in tradition, personal responsibility, institutional stability, and skepticism of rapid change.',
     angle: 'What time-tested principles does this risk undermining? What unintended consequences come from moving too fast? What works about the status quo that is worth preserving?',
   },
@@ -93,97 +93,152 @@ async function anthropicCall(apiKey, system, userMessage, maxTokens = 800) {
 }
 
 function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan }) {
-  const color = persona?.color || '#555'
+  const color = persona?.color || '#333'
   const dimmed = panelRan && !selected
+  const clickable = !panelRan && onToggle && persona
 
   return (
     <div
-      onClick={() => !panelRan && onToggle && persona && onToggle(persona.id)}
+      onClick={() => clickable && onToggle(persona.id)}
       style={{
-        background: '#1a1a1a',
-        border: `1px solid ${selected ? color + '88' : '#2a2a2a'}`,
-        borderRadius: '12px',
-        padding: '1.5rem',
+        background: selected
+          ? `linear-gradient(145deg, #111118, #0e0e18)`
+          : '#0c0c14',
+        border: `1px solid ${selected ? color + '55' : '#1c1c2a'}`,
+        borderRadius: '16px',
+        padding: '1.4rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem',
-        transition: 'border-color 0.2s, opacity 0.2s',
-        opacity: dimmed ? 0.35 : 1,
-        cursor: !panelRan && onToggle && persona ? 'pointer' : 'default',
+        gap: '0.9rem',
+        transition: 'all 0.2s ease',
+        opacity: dimmed ? 0.25 : 1,
+        cursor: clickable ? 'pointer' : 'default',
         position: 'relative',
+        boxShadow: selected ? `0 0 24px ${color}18` : 'none',
       }}
     >
+      {/* Checkbox */}
       {!panelRan && persona && onToggle && (
         <div style={{
           position: 'absolute',
-          top: '1rem',
-          right: '1rem',
-          width: '18px',
-          height: '18px',
+          top: '1.1rem',
+          right: '1.1rem',
+          width: '16px',
+          height: '16px',
           borderRadius: '4px',
-          border: `2px solid ${selected ? color : '#444'}`,
+          border: `1.5px solid ${selected ? color : '#333'}`,
           background: selected ? color : 'transparent',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'all 0.15s',
-          flexShrink: 0,
         }}>
-          {selected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: 700 }}>✓</span>}
+          {selected && <span style={{ color: '#000', fontSize: '10px', fontWeight: 800, lineHeight: 1 }}>✓</span>}
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingRight: '1.8rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingRight: '1.6rem' }}>
         {discovering ? (
-          <div style={{ width: '1.4rem', height: '1.4rem', borderRadius: '50%', background: '#2a2a2a', animation: 'pulse 1.5s infinite' }} />
+          <div style={{ width: '1.3rem', height: '1.3rem', borderRadius: '50%', background: '#1c1c2a', animation: 'pulse 1.5s infinite' }} />
         ) : (
-          <span style={{ fontSize: '1.4rem' }}>{persona.icon}</span>
+          <span style={{ fontSize: '1.25rem' }}>{persona.icon}</span>
         )}
-        <span style={{ fontWeight: 600, color: selected ? color : '#666', fontSize: '1rem', transition: 'color 0.2s' }}>
-          {discovering ? <span style={{ color: '#444' }}>Discovering...</span> : persona.name}
+        <span style={{
+          fontWeight: 600,
+          fontSize: '0.9rem',
+          color: discovering ? '#333' : selected ? color : '#555',
+          letterSpacing: '0.01em',
+          transition: 'color 0.2s',
+        }}>
+          {discovering ? 'Discovering...' : persona.name}
         </span>
       </div>
 
-      {(loading || discovering) && (
-        <div style={{ color: '#555', fontSize: '0.85rem', fontStyle: 'italic' }}>
-          {discovering ? 'Identifying the right lens...' : 'Thinking...'}
+      {/* Accent line */}
+      {!discovering && (
+        <div style={{
+          height: '1px',
+          background: selected ? `linear-gradient(90deg, ${color}55, transparent)` : '#1c1c2a',
+          transition: 'background 0.3s',
+        }} />
+      )}
+
+      {/* Content */}
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '3px' }}>
+            {[0,1,2].map(i => (
+              <div key={i} style={{
+                width: '4px', height: '4px', borderRadius: '50%',
+                background: color,
+                animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
+              }} />
+            ))}
+          </div>
+          <span style={{ color: '#444', fontSize: '0.8rem' }}>Thinking...</span>
+        </div>
+      )}
+
+      {discovering && (
+        <div style={{ color: '#333', fontSize: '0.8rem', fontStyle: 'italic' }}>
+          Finding the right lens...
         </div>
       )}
 
       {!loading && !discovering && !response && persona && (
-        <div style={{ color: '#555', fontSize: '0.85rem', fontStyle: 'italic' }}>
+        <div style={{ color: '#3a3a4a', fontSize: '0.82rem', lineHeight: 1.6, fontStyle: 'italic' }}>
           {persona.role}
         </div>
       )}
 
       {response && !loading && !discovering && (
-        <div style={{ fontSize: '0.88rem', lineHeight: 1.7, color: '#ccc' }}>
-          {formatResponse(response)}
+        <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#aaa' }}>
+          {formatResponse(response, color)}
         </div>
       )}
     </div>
   )
 }
 
-function formatResponse(text) {
+function formatResponse(text, color) {
   return text.split('\n').map((line, i) => {
     if (line.startsWith('**') && line.endsWith('**')) {
       return (
-        <div key={i} style={{ fontWeight: 700, color: '#e8e8e8', marginTop: i > 0 ? '1rem' : 0, marginBottom: '0.3rem' }}>
+        <div key={i} style={{
+          fontWeight: 700,
+          color: color,
+          marginTop: i > 0 ? '1rem' : 0,
+          marginBottom: '0.4rem',
+          fontSize: '0.78rem',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+        }}>
           {line.replace(/\*\*/g, '')}
         </div>
       )
     }
     if (line.startsWith('- ')) {
-      return <div key={i} style={{ paddingLeft: '1rem', color: '#aaa' }}>• {line.slice(2)}</div>
+      return (
+        <div key={i} style={{ paddingLeft: '1rem', color: '#888', marginBottom: '0.2rem' }}>
+          · {line.slice(2)}
+        </div>
+      )
     }
-    return <div key={i}>{line}</div>
+    return line ? <div key={i} style={{ color: '#bbb' }}>{line}</div> : <div key={i} style={{ height: '0.3rem' }} />
   })
 }
 
 function SectionLabel({ children }) {
   return (
-    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#444', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+    <div style={{
+      fontSize: '0.68rem',
+      fontWeight: 600,
+      color: '#333',
+      letterSpacing: '0.12em',
+      textTransform: 'uppercase',
+      marginBottom: '1rem',
+    }}>
       {children}
     </div>
   )
@@ -225,7 +280,7 @@ export default function App() {
     setSelected(prev => {
       const next = new Set()
       for (const id of prev) {
-        if (PRESET_PERSONAS.find(p => p.id === id)) next.add(id)
+        if ([...PRESET_PERSONAS, PHILOSOPHER].find(p => p.id === id)) next.add(id)
       }
       return next
     })
@@ -254,7 +309,7 @@ export default function App() {
   }
 
   async function handleRunPanel() {
-    if (selected.size === 0) return
+    if (selected.size === 0 || !idea.trim()) return
     const toRun = allPersonas.filter(p => selected.has(p.id))
     setResponses({})
     setPanelRan(true)
@@ -277,29 +332,61 @@ export default function App() {
 
   const anyLoading = Object.values(loading).some(Boolean)
   const displayDiscovered = [PHILOSOPHER, ...(discovered || (discovering ? Array(4).fill(null) : []))]
+  const canRun = selected.size > 0 && idea.trim() && !anyLoading && !discovering
 
   return (
     <div>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: '0.4rem' }}>STORM Personas</h1>
-        <p style={{ color: '#666', fontSize: '0.95rem' }}>
-          Pick your lenses, drop in an idea, get honest reads from each perspective.
+      {/* Header */}
+      <div style={{ marginBottom: '3.5rem', textAlign: 'center' }}>
+        <div style={{
+          display: 'inline-block',
+          fontSize: '0.7rem',
+          fontWeight: 600,
+          letterSpacing: '0.2em',
+          textTransform: 'uppercase',
+          color: '#4a4a6a',
+          marginBottom: '0.8rem',
+        }}>
+          Broaden your perspective
+        </div>
+        <h1 style={{
+          fontSize: 'clamp(2.8rem, 6vw, 4.5rem)',
+          fontWeight: 700,
+          letterSpacing: '-0.03em',
+          lineHeight: 1,
+          background: 'linear-gradient(135deg, #e8e8ff 0%, #9090cc 50%, #5050aa 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          marginBottom: '1rem',
+        }}>
+          Elevation
+        </h1>
+        <p style={{
+          color: '#3a3a5a',
+          fontSize: '0.95rem',
+          maxWidth: '420px',
+          margin: '0 auto',
+          lineHeight: 1.6,
+        }}>
+          Sometimes, all you need is a little Elevation to broaden your perspective.
         </p>
       </div>
 
+      {/* API Key */}
       {showKeyInput && (
         <div style={{
-          background: '#1a1a1a',
-          border: '1px solid #2a2a2a',
-          borderRadius: '10px',
-          padding: '1.2rem',
-          marginBottom: '1.5rem',
+          background: '#0c0c14',
+          border: '1px solid #1c1c2a',
+          borderRadius: '12px',
+          padding: '1rem 1.2rem',
+          marginBottom: '2rem',
           display: 'flex',
           gap: '0.8rem',
           alignItems: 'center',
           flexWrap: 'wrap',
         }}>
-          <span style={{ color: '#888', fontSize: '0.85rem', flexShrink: 0 }}>Anthropic API key:</span>
+          <span style={{ color: '#444', fontSize: '0.82rem', flexShrink: 0 }}>API key</span>
           <input
             type="password"
             value={apiKey}
@@ -308,25 +395,25 @@ export default function App() {
             style={{
               flex: 1,
               minWidth: '200px',
-              background: '#111',
-              border: '1px solid #333',
-              borderRadius: '6px',
-              padding: '0.5rem 0.8rem',
+              background: '#080810',
+              border: '1px solid #1c1c2a',
+              borderRadius: '8px',
+              padding: '0.45rem 0.8rem',
               color: '#e8e8e8',
-              fontSize: '0.85rem',
+              fontSize: '0.82rem',
               outline: 'none',
             }}
           />
-          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#555', cursor: 'pointer', fontSize: '0.8rem' }}>
+          <button onClick={() => setShowKeyInput(false)} style={{ background: 'transparent', border: 'none', color: '#333', cursor: 'pointer', fontSize: '0.75rem' }}>
             Hide
           </button>
         </div>
       )}
 
-      {/* Preset personas — always visible */}
-      <div style={{ marginBottom: '2rem' }}>
-        <SectionLabel>Preset personas — click to select</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+      {/* Political presets */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <SectionLabel>Political perspectives</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {PRESET_PERSONAS.map(p => (
             <PersonaCard
               key={p.id}
@@ -342,107 +429,122 @@ export default function App() {
         </div>
       </div>
 
+      {/* Divider */}
+      <div style={{ height: '1px', background: 'linear-gradient(90deg, transparent, #1c1c2a, transparent)', marginBottom: '2.5rem' }} />
+
       {/* Idea input */}
-      <form onSubmit={handleDiscover} style={{ marginBottom: '1.5rem' }}>
-        <textarea
-          value={idea}
-          onChange={e => setIdea(e.target.value)}
-          placeholder="Describe your idea, decision, or problem..."
-          rows={4}
-          style={{
-            width: '100%',
-            background: '#1a1a1a',
-            border: '1px solid #2a2a2a',
-            borderRadius: '10px',
-            padding: '1rem',
-            color: '#e8e8e8',
-            fontSize: '0.95rem',
-            resize: 'vertical',
-            outline: 'none',
-            marginBottom: '1rem',
-            lineHeight: 1.6,
-          }}
-          onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
-        />
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button
-            type="submit"
-            disabled={discovering || anyLoading || !idea.trim()}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <SectionLabel>Your idea or question</SectionLabel>
+        <form onSubmit={handleDiscover}>
+          <textarea
+            value={idea}
+            onChange={e => setIdea(e.target.value)}
+            placeholder="What's on your mind? Describe your idea, decision, or problem..."
+            rows={4}
             style={{
-              background: '#4f8ef7',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '0.7rem 1.4rem',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer',
-              opacity: discovering || anyLoading || !idea.trim() ? 0.5 : 1,
-              transition: 'opacity 0.2s',
+              width: '100%',
+              background: '#0c0c14',
+              border: '1px solid #1c1c2a',
+              borderRadius: '12px',
+              padding: '1rem 1.1rem',
+              color: '#e8e8e8',
+              fontSize: '0.95rem',
+              resize: 'vertical',
+              outline: 'none',
+              marginBottom: '1rem',
+              lineHeight: 1.65,
+              fontFamily: 'inherit',
+              transition: 'border-color 0.2s',
             }}
-          >
-            {discovering ? 'Finding lenses...' : '+ Discover context-specific personas'}
-          </button>
+            onFocus={e => e.target.style.borderColor = '#2c2c4a'}
+            onBlur={e => e.target.style.borderColor = '#1c1c2a'}
+            onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleDiscover(e) }}
+          />
 
-          <button
-            type="button"
-            onClick={handleRunPanel}
-            disabled={selected.size === 0 || anyLoading || discovering || !idea.trim()}
-            style={{
-              background: selected.size === 0 || !idea.trim() ? '#1a1a1a' : '#4ec97a',
-              color: selected.size === 0 || !idea.trim() ? '#444' : '#000',
-              border: selected.size === 0 || !idea.trim() ? '1px solid #2a2a2a' : 'none',
-              borderRadius: '8px',
-              padding: '0.7rem 1.4rem',
-              fontSize: '0.9rem',
-              fontWeight: 600,
-              cursor: selected.size === 0 || anyLoading || discovering || !idea.trim() ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            Run {selected.size > 0 ? `${selected.size} ` : ''}selected
-          </button>
-
-          {!showKeyInput && (
-            <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}>
-              API key
+          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="submit"
+              disabled={discovering || anyLoading || !idea.trim()}
+              style={{
+                background: 'transparent',
+                color: discovering || anyLoading || !idea.trim() ? '#333' : '#6060aa',
+                border: `1px solid ${discovering || anyLoading || !idea.trim() ? '#1c1c2a' : '#3a3a6a'}`,
+                borderRadius: '8px',
+                padding: '0.65rem 1.2rem',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                cursor: discovering || anyLoading || !idea.trim() ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                fontFamily: 'inherit',
+              }}
+            >
+              {discovering ? 'Discovering...' : '+ Discover context-specific lenses'}
             </button>
-          )}
-        </div>
-        {error && <p style={{ color: '#e05c5c', marginTop: '0.6rem', fontSize: '0.85rem' }}>{error}</p>}
-      </form>
 
-      {/* Philosopher + context-specific personas */}
-      <div style={{ marginBottom: '1.5rem' }}>
-          <SectionLabel>Philosophical & context-specific personas</SectionLabel>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
-            {displayDiscovered.map((p, i) => (
-              <PersonaCard
-                key={p?.id || i}
-                persona={p}
-                response={p ? responses[p.id] : null}
-                loading={p ? loading[p.id] : false}
-                discovering={!p}
-                selected={p ? selected.has(p.id) : false}
-                onToggle={togglePersona}
-                panelRan={panelRan}
-              />
-            ))}
+            <button
+              type="button"
+              onClick={handleRunPanel}
+              disabled={!canRun}
+              style={{
+                background: canRun
+                  ? 'linear-gradient(135deg, #5050aa, #7070cc)'
+                  : '#0c0c14',
+                color: canRun ? '#fff' : '#2a2a3a',
+                border: canRun ? 'none' : '1px solid #1c1c2a',
+                borderRadius: '8px',
+                padding: '0.65rem 1.4rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: canRun ? 'pointer' : 'not-allowed',
+                transition: 'all 0.2s',
+                boxShadow: canRun ? '0 4px 20px #5050aa44' : 'none',
+                fontFamily: 'inherit',
+              }}
+            >
+              {anyLoading ? 'Running...' : `Elevate${selected.size > 0 ? ` · ${selected.size} selected` : ''}`}
+            </button>
+
+            {!showKeyInput && (
+              <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#2a2a3a', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
+                API key
+              </button>
+            )}
           </div>
+          {error && <p style={{ color: '#f97b7b', marginTop: '0.6rem', fontSize: '0.82rem' }}>{error}</p>}
+        </form>
+      </div>
+
+      {/* Philosopher + discovered */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <SectionLabel>Philosophical & context-specific lenses</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
+          {displayDiscovered.map((p, i) => (
+            <PersonaCard
+              key={p?.id || i}
+              persona={p}
+              response={p ? responses[p.id] : null}
+              loading={p ? loading[p.id] : false}
+              discovering={!p}
+              selected={p ? selected.has(p.id) : false}
+              onToggle={togglePersona}
+              panelRan={panelRan}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #1c1c2a' }}>
           <button
             onClick={() => { setPanelRan(false); setResponses({}) }}
-            style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: '6px', padding: '0.4rem 1rem', cursor: 'pointer', fontSize: '0.8rem' }}
+            style={{ background: 'transparent', border: '1px solid #1c1c2a', color: '#444', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
           >
             Adjust selection
           </button>
           <button
             onClick={handleReset}
-            style={{ background: 'transparent', border: 'none', color: '#444', cursor: 'pointer', fontSize: '0.8rem' }}
+            style={{ background: 'transparent', border: 'none', color: '#333', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}
           >
             Start over
           </button>
@@ -451,8 +553,12 @@ export default function App() {
 
       <style>{`
         @keyframes pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.7; }
+          0%, 100% { opacity: 0.2; }
+          50% { opacity: 0.5; }
+        }
+        @keyframes bounce {
+          0%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-4px); }
         }
       `}</style>
     </div>
