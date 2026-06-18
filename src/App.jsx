@@ -2,15 +2,16 @@ import { useState } from 'react'
 
 const PERSONA_COLORS = ['#4f8ef7', '#e05c5c', '#4ec97a', '#c97ae0', '#f7a84f', '#4fc9c9']
 
+const PHILOSOPHER = {
+  id: 'preset_philosopher',
+  name: 'The Philosopher',
+  icon: '🏛️',
+  color: '#a0897a',
+  role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
+  angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
+}
+
 const PRESET_PERSONAS = [
-  {
-    id: 'preset_philosopher',
-    name: 'The Philosopher',
-    icon: '🏛️',
-    color: '#a0897a',
-    role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
-    angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
-  },
   {
     id: 'preset_progressive',
     name: 'The Progressive',
@@ -200,7 +201,7 @@ export default function App() {
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
 
-  const allPersonas = [...PRESET_PERSONAS, ...(discovered || [])]
+  const allPersonas = [...PRESET_PERSONAS, PHILOSOPHER, ...(discovered || [])]
 
   function togglePersona(id) {
     if (panelRan) return
@@ -241,6 +242,7 @@ export default function App() {
       setDiscovered(disc)
       setSelected(prev => {
         const next = new Set(prev)
+        next.add(PHILOSOPHER.id)
         disc.forEach(p => next.add(p.id))
         return next
       })
@@ -274,7 +276,7 @@ export default function App() {
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
-  const displayDiscovered = discovered || (discovering ? Array(4).fill(null) : null)
+  const displayDiscovered = [PHILOSOPHER, ...(discovered || (discovering ? Array(4).fill(null) : []))]
 
   return (
     <div>
@@ -410,10 +412,9 @@ export default function App() {
         {error && <p style={{ color: '#e05c5c', marginTop: '0.6rem', fontSize: '0.85rem' }}>{error}</p>}
       </form>
 
-      {/* Context-specific discovered personas */}
-      {displayDiscovered && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <SectionLabel>Context-specific personas</SectionLabel>
+      {/* Philosopher + context-specific personas */}
+      <div style={{ marginBottom: '1.5rem' }}>
+          <SectionLabel>Philosophical & context-specific personas</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
             {displayDiscovered.map((p, i) => (
               <PersonaCard
@@ -421,15 +422,14 @@ export default function App() {
                 persona={p}
                 response={p ? responses[p.id] : null}
                 loading={p ? loading[p.id] : false}
-                discovering={discovering || !p}
+                discovering={!p}
                 selected={p ? selected.has(p.id) : false}
                 onToggle={togglePersona}
                 panelRan={panelRan}
               />
             ))}
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
