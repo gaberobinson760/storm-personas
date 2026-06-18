@@ -660,7 +660,7 @@ export default function App() {
             Elevation
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem', maxWidth: '380px', margin: '0 auto', lineHeight: 1.65, fontWeight: 300 }}>
-            Sometimes, all you need is a little Elevation to broaden your perspective.
+            Everything looks different with a little Elevation.
           </p>
         </div>
       </div>
