@@ -2,16 +2,16 @@ import { useState } from 'react'
 
 const PERSONA_COLORS = ['#3b6fd4', '#c94f4f', '#2e9e5e', '#8b4fc9', '#c97a2e', '#2e8fa0']
 
-const PHILOSOPHER = {
-  id: 'preset_philosopher',
-  name: 'The Philosopher',
-  icon: '🏛️',
-  color: '#7a6a5a',
-  role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
-  angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
-}
 
 const PRESET_PERSONAS = [
+  {
+    id: 'preset_philosopher',
+    name: 'The Philosopher',
+    icon: '🏛️',
+    color: '#7a6a5a',
+    role: 'A philosopher who examines the underlying assumptions, ethics, and first principles behind any idea.',
+    angle: 'What are the foundational assumptions here? What does this idea say about our values? What would a first-principles thinker challenge?',
+  },
   {
     id: 'preset_progressive',
     name: 'The Progressive',
@@ -253,7 +253,7 @@ export default function App() {
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
 
-  const allPersonas = [...PRESET_PERSONAS, PHILOSOPHER, ...(discovered || [])]
+  const allPersonas = [...PRESET_PERSONAS, ...(discovered || [])]
 
   function togglePersona(id) {
     if (panelRan) return
@@ -277,7 +277,7 @@ export default function App() {
     setSelected(prev => {
       const next = new Set()
       for (const id of prev) {
-        if ([...PRESET_PERSONAS, PHILOSOPHER].find(p => p.id === id)) next.add(id)
+        if (PRESET_PERSONAS.find(p => p.id === id)) next.add(id)
       }
       return next
     })
@@ -294,7 +294,6 @@ export default function App() {
       setDiscovered(disc)
       setSelected(prev => {
         const next = new Set(prev)
-        next.add(PHILOSOPHER.id)
         disc.forEach(p => next.add(p.id))
         return next
       })
@@ -328,7 +327,7 @@ export default function App() {
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
-  const displayDiscovered = [PHILOSOPHER, ...(discovered || (discovering ? Array(4).fill(null) : []))]
+  const displayDiscovered = discovered || (discovering ? Array(4).fill(null) : [])
   const canRun = selected.size > 0 && idea.trim() && !anyLoading && !discovering
 
   return (
