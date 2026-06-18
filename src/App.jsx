@@ -674,17 +674,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Political presets */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <SectionLabel>Political perspectives</SectionLabel>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
-          {PRESET_PERSONAS.map(p => (
-            <PersonaCard key={p.id} persona={p} response={responses[p.id]} loading={loading[p.id]} discovering={false} selected={selected.has(p.id)} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} blended={blendSet.has(p.id)} onToggleBlend={toggleBlend} />
-          ))}
-        </div>
-      </div>
-
-      <div style={{ height: '1px', background: '#e8ecf4', marginBottom: '2.5rem' }} />
 
       {/* Idea input */}
       <div style={{ marginBottom: '2.5rem' }}>
@@ -712,12 +701,23 @@ export default function App() {
         </form>
       </div>
 
-      {/* Philosopher + discovered */}
-      {displayDiscovered && <div style={{ marginBottom: '1.5rem' }}>
+      {/* Philosopher + context-specific */}
+      {displayDiscovered && <div style={{ marginBottom: '2.5rem' }}>
         <SectionLabel>Philosophical & context-specific lenses</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {displayDiscovered.map((p, i) => (
             <PersonaCard key={p?.id || i} persona={p} response={p ? responses[p.id] : null} loading={p ? loading[p.id] : false} discovering={!p} selected={p ? selected.has(p.id) : false} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} blended={p ? blendSet.has(p.id) : false} onToggleBlend={toggleBlend} />
+          ))}
+        </div>
+      </div>}
+
+      {/* Political perspectives — only shown after discovery */}
+      {showContextSection && <div style={{ marginBottom: '1.5rem' }}>
+        <div style={{ height: '1px', background: '#e8ecf4', marginBottom: '2.5rem' }} />
+        <SectionLabel>Political perspectives</SectionLabel>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
+          {PRESET_PERSONAS.map(p => (
+            <PersonaCard key={p.id} persona={p} response={responses[p.id]} loading={loading[p.id]} discovering={false} selected={selected.has(p.id)} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} blended={blendSet.has(p.id)} onToggleBlend={toggleBlend} />
           ))}
         </div>
       </div>}
