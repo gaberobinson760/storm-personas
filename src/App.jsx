@@ -61,6 +61,12 @@ You are now in a one-on-one conversation. The user wants to dig deeper into your
 
 Be direct, thoughtful, and conversational. Ask follow-up questions when useful. Keep responses focused and under 200 words unless the question demands more depth.`
 
+const BLEND_PROMPT = `You are a synthesis expert. You have been given an original idea and responses from multiple distinct perspectives. Your job is to blend these into one comprehensive, balanced thought.
+
+Do not just summarize each perspective in sequence. Instead, weave them together — find where they agree, where they tension each other, and what a truly well-rounded view looks like when all lenses are considered simultaneously.
+
+Write in clear, direct prose. No bullet points. 3-5 paragraphs. Start with the core insight that emerges from holding all perspectives at once, then work through the nuance.`
+
 const DISCOVER_PERSONAS_PROMPT = `You are a thinking partner. Given an idea or problem, identify the 4 most useful expert perspectives to pressure-test it.
 
 Do NOT use generic archetypes (avoid: "devil's advocate", "pragmatist", "visionary"). Identify specific expert lenses that matter most for THIS particular idea.
@@ -346,7 +352,7 @@ function formatResponse(text, color) {
 
 // ── Persona Card ──────────────────────────────────────────────────────────────
 
-function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan, onDigDeeper }) {
+function PersonaCard({ persona, response, loading, discovering, selected, onToggle, panelRan, onDigDeeper, blended, onToggleBlend }) {
   const color = persona?.color || '#aaa'
   const dimmed = panelRan && !selected
   const clickable = !panelRan && onToggle && persona
@@ -423,29 +429,67 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
           <div style={{ fontSize: '0.85rem', lineHeight: 1.75, color: '#444' }}>
             {formatResponse(response, color)}
           </div>
-          <button
-            onClick={e => { e.stopPropagation(); onDigDeeper(persona, response) }}
-            style={{
-              marginTop: '0.4rem',
-              alignSelf: 'flex-start',
-              background: 'transparent',
-              border: `1.5px solid ${color}66`,
-              borderRadius: '8px',
-              padding: '0.4rem 0.9rem',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              color: color,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              fontFamily: 'inherit',
-            }}
-            onMouseEnter={e => { e.target.style.background = color; e.target.style.color = '#fff' }}
-            onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = color }}
-          >
-            Dig deeper →
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
+            <button
+              onClick={e => { e.stopPropagation(); onDigDeeper(persona, response) }}
+              style={{ background: 'transparent', border: `1.5px solid ${color}66`, borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, color, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+              onMouseEnter={e => { e.target.style.background = color; e.target.style.color = '#fff' }}
+              onMouseLeave={e => { e.target.style.background = 'transparent'; e.target.style.color = color }}
+            >
+              Dig deeper →
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onToggleBlend(persona.id) }}
+              style={{ background: blended ? color : 'transparent', border: `1.5px solid ${color}66`, borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, color: blended ? '#fff' : color, cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'inherit' }}
+            >
+              {blended ? '✓ In blend' : '+ Blend'}
+            </button>
+          </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ── Blend Modal ───────────────────────────────────────────────────────────────
+
+function BlendModal({ result, loading, onClose }) {
+  return (
+    <div
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,30,0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+    >
+      <div style={{ background: '#fff', width: '100%', maxWidth: '720px', maxHeight: '80vh', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+        {/* Header */}
+        <div style={{ padding: '1.2rem 1.5rem', borderBottom: '3px solid #4a6ab0', display: 'flex', alignItems: 'center', gap: '0.7rem', background: '#fafbff', flexShrink: 0 }}>
+          <span style={{ fontSize: '1.4rem' }}>🔀</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: '#2a4a8a', fontSize: '1rem' }}>Blended Perspective</div>
+            <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '0.1rem' }}>A synthesis of all selected viewpoints</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: '0.2rem' }}>×</button>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.8rem' }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', height: '200px' }}>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4a6ab0', animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                ))}
+              </div>
+              <div style={{ color: '#aaa', fontSize: '0.85rem' }}>Weaving perspectives together...</div>
+            </div>
+          ) : (
+            <div style={{ fontSize: '0.92rem', lineHeight: 1.85, color: '#333' }}>
+              {result?.split('\n\n').map((para, i) => (
+                <p key={i} style={{ marginBottom: '1.2rem' }}>{para}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -471,7 +515,11 @@ export default function App() {
   const [discovering, setDiscovering] = useState(false)
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
-  const [activeChat, setActiveChat] = useState(null) // { persona, response }
+  const [activeChat, setActiveChat] = useState(null)
+  const [blendSet, setBlendSet] = useState(new Set())
+  const [blendModal, setBlendModal] = useState(false)
+  const [blendResult, setBlendResult] = useState(null)
+  const [blendLoading, setBlendLoading] = useState(false)
 
   const allPersonas = [...PRESET_PERSONAS, PHILOSOPHER, ...(discovered || [])]
 
@@ -538,11 +586,42 @@ export default function App() {
     })
   }
 
+  function toggleBlend(id) {
+    setBlendSet(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  async function handleBlend() {
+    const toBlend = allPersonas.filter(p => blendSet.has(p.id) && responses[p.id])
+    if (toBlend.length < 2) return
+    setBlendResult(null)
+    setBlendLoading(true)
+    setBlendModal(true)
+
+    const content = `Original idea: "${idea}"\n\n` + toBlend.map(p =>
+      `--- ${p.name} ---\n${responses[p.id]}`
+    ).join('\n\n')
+
+    try {
+      const result = await anthropicCall(apiKey, BLEND_PROMPT, [{ role: 'user', content }], 1200)
+      setBlendResult(result)
+    } catch (err) {
+      setBlendResult(`Error: ${err.message}`)
+    } finally {
+      setBlendLoading(false)
+    }
+  }
+
   function handleReset() {
     setDiscovered(null)
     setResponses({})
     setSelected(new Set())
     setPanelRan(false)
+    setBlendSet(new Set())
+    setBlendResult(null)
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
@@ -600,7 +679,7 @@ export default function App() {
         <SectionLabel>Political perspectives</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {PRESET_PERSONAS.map(p => (
-            <PersonaCard key={p.id} persona={p} response={responses[p.id]} loading={loading[p.id]} discovering={false} selected={selected.has(p.id)} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} />
+            <PersonaCard key={p.id} persona={p} response={responses[p.id]} loading={loading[p.id]} discovering={false} selected={selected.has(p.id)} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} blended={blendSet.has(p.id)} onToggleBlend={toggleBlend} />
           ))}
         </div>
       </div>
@@ -638,7 +717,7 @@ export default function App() {
         <SectionLabel>Philosophical & context-specific lenses</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {displayDiscovered.map((p, i) => (
-            <PersonaCard key={p?.id || i} persona={p} response={p ? responses[p.id] : null} loading={p ? loading[p.id] : false} discovering={!p} selected={p ? selected.has(p.id) : false} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} />
+            <PersonaCard key={p?.id || i} persona={p} response={p ? responses[p.id] : null} loading={p ? loading[p.id] : false} discovering={!p} selected={p ? selected.has(p.id) : false} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} blended={p ? blendSet.has(p.id) : false} onToggleBlend={toggleBlend} />
           ))}
         </div>
       </div>}
@@ -651,6 +730,46 @@ export default function App() {
         </div>
       )}
 
+      {/* Floating blend bar */}
+      {blendSet.size > 0 && (
+        <div style={{
+          position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+          background: 'linear-gradient(135deg, #2a4a8a, #4a6ab0)',
+          borderRadius: '50px',
+          padding: '0.8rem 1.4rem',
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          boxShadow: '0 8px 32px rgba(42,74,138,0.4)',
+          zIndex: 900,
+          whiteSpace: 'nowrap',
+        }}>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.82rem' }}>
+            {blendSet.size} perspective{blendSet.size > 1 ? 's' : ''} selected
+          </span>
+          <button
+            onClick={handleBlend}
+            disabled={blendSet.size < 2}
+            style={{
+              background: blendSet.size >= 2 ? '#fff' : 'rgba(255,255,255,0.2)',
+              color: blendSet.size >= 2 ? '#2a4a8a' : 'rgba(255,255,255,0.4)',
+              border: 'none', borderRadius: '50px',
+              padding: '0.45rem 1.1rem',
+              fontSize: '0.82rem', fontWeight: 700,
+              cursor: blendSet.size >= 2 ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              transition: 'all 0.2s',
+            }}
+          >
+            {blendSet.size < 2 ? 'Select 2+ to blend' : 'Blend →'}
+          </button>
+          <button
+            onClick={() => setBlendSet(new Set())}
+            style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, fontFamily: 'inherit' }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Chat modal */}
       {activeChat && (
         <ChatModal
@@ -659,6 +778,15 @@ export default function App() {
           originalIdea={idea}
           apiKey={apiKey}
           onClose={() => setActiveChat(null)}
+        />
+      )}
+
+      {/* Blend modal */}
+      {blendModal && (
+        <BlendModal
+          result={blendResult}
+          loading={blendLoading}
+          onClose={() => setBlendModal(false)}
         />
       )}
 
