@@ -349,6 +349,8 @@ export default function App() {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
+        justifyContent: 'flex-start',
+        paddingTop: '3.5rem',
       }}>
         {/* Dark overlay for text legibility */}
         <div style={{
