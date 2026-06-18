@@ -525,11 +525,6 @@ export default function App() {
               {anyLoading ? 'Running...' : `Elevate${selected.size > 0 ? ` · ${selected.size} selected` : ''}`}
             </button>
 
-            {!showKeyInput && (
-              <button type="button" onClick={() => setShowKeyInput(true)} style={{ background: 'transparent', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}>
-                API key
-              </button>
-            )}
           </div>
           {error && <p style={{ color: '#c94f4f', marginTop: '0.6rem', fontSize: '0.82rem' }}>{error}</p>}
         </form>
