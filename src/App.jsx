@@ -340,7 +340,9 @@ export default function App() {
         marginLeft: '-1.5rem',
         marginRight: '-1.5rem',
         marginBottom: '2.5rem',
-        background: 'linear-gradient(160deg, #1a2a4a 0%, #2a3a6a 40%, #4a6a9a 100%)',
+        backgroundImage: 'url(/mountaintop.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center 40%',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -348,11 +350,11 @@ export default function App() {
         position: 'relative',
         overflow: 'hidden',
       }}>
-        {/* Subtle mountain silhouette shapes */}
-        <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%' }} viewBox="0 0 1200 180" preserveAspectRatio="none">
-          <polygon points="0,180 200,60 400,120 600,20 800,90 1000,40 1200,100 1200,180" fill="rgba(255,255,255,0.04)" />
-          <polygon points="0,180 150,100 350,150 550,70 750,130 950,60 1200,120 1200,180" fill="rgba(255,255,255,0.03)" />
-        </svg>
+        {/* Dark overlay for text legibility */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(10,20,40,0.45) 0%, rgba(10,20,40,0.65) 100%)',
+        }} />
 
         <div style={{ position: 'relative', textAlign: 'center', padding: '0 2rem' }}>
           <div style={{
