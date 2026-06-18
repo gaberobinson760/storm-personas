@@ -654,7 +654,7 @@ export default function App() {
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(10,20,40,0.45) 0%, rgba(10,20,40,0.65) 100%)' }} />
         <div style={{ position: 'relative', textAlign: 'center', padding: '0 2rem' }}>
           <div style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: '1rem' }}>
-            Broaden your perspective
+            Elevate your perspective
           </div>
           <h1 style={{ fontSize: 'clamp(3rem, 7vw, 5rem)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1, color: '#fff', marginBottom: '1.2rem', textShadow: '0 2px 40px rgba(100,140,255,0.3)' }}>
             Elevation
