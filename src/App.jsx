@@ -634,14 +634,14 @@ export default function App() {
       </div>
 
       {/* Philosopher + discovered */}
-      <div style={{ marginBottom: '1.5rem' }}>
+      {displayDiscovered && <div style={{ marginBottom: '1.5rem' }}>
         <SectionLabel>Philosophical & context-specific lenses</SectionLabel>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
           {displayDiscovered.map((p, i) => (
             <PersonaCard key={p?.id || i} persona={p} response={p ? responses[p.id] : null} loading={p ? loading[p.id] : false} discovering={!p} selected={p ? selected.has(p.id) : false} onToggle={togglePersona} panelRan={panelRan} onDigDeeper={(persona, response) => setActiveChat({ persona, response })} />
           ))}
         </div>
-      </div>
+      </div>}
 
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
