@@ -495,58 +495,42 @@ function BlendModal({ result, loading, onClose }) {
 }
 
 function InfoSections() {
-  const [open, setOpen] = useState(null)
-
-  const toggle = (key) => setOpen(prev => prev === key ? null : key)
-
-  const sections = [
-    {
-      key: 'what',
-      title: 'What is Elevation?',
-      content: (
-        <p style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.8, margin: 0 }}>
-          Elevation is a multi-perspective thinking tool that runs your ideas through a panel of distinct expert voices simultaneously. Instead of thinking through a problem from a single point of view, Elevation surfaces the angles, blind spots, and insights you might never have considered on your own — giving you a fuller, more honest picture before you act. Whether you're stress-testing a decision, exploring a new idea, or just trying to think more clearly, Elevation helps you see further by looking from higher ground.
-        </p>
-      ),
-    },
-    {
-      key: 'summit',
-      title: 'Summit Approach',
-      content: (
-        <ol style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.8, margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-          <li><strong style={{ color: '#2a4a8a' }}>Enter your idea.</strong> Type any idea, decision, question, or problem into the text field. The more specific you are, the sharper the perspectives.</li>
-          <li><strong style={{ color: '#2a4a8a' }}>Discover your lenses.</strong> Hit "Discover context-specific lenses" and Elevation will identify the four expert perspectives most relevant to your specific idea — alongside The Philosopher, who examines the foundational assumptions of anything.</li>
-          <li><strong style={{ color: '#2a4a8a' }}>Add political perspectives (optional).</strong> Once discovered, a separate political section appears — Progressive, Moderate, and Conservative. Select any you want included.</li>
-          <li><strong style={{ color: '#2a4a8a' }}>Select and Elevate.</strong> Click any persona card to select it, then hit "Elevate" to run your idea through all selected lenses at once. Each persona will ask probing questions and deliver their honest read.</li>
-          <li><strong style={{ color: '#2a4a8a' }}>Dig deeper.</strong> If a particular perspective intrigues you, click "Dig deeper →" on that card to open a one-on-one conversation with that persona — staying fully in character.</li>
-          <li><strong style={{ color: '#2a4a8a' }}>Blend perspectives.</strong> Select any combination of responses using the "+ Blend" button, then hit "Blend →" in the floating bar to synthesize them into one balanced, comprehensive thought.</li>
-        </ol>
-      ),
-    },
-  ]
+  const [summitOpen, setSummitOpen] = useState(false)
 
   return (
     <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-      {sections.map(s => (
-        <div key={s.key} style={{ background: '#fff', border: '1px solid #e0e4f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <button
-            onClick={() => toggle(s.key)}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '1rem 1.2rem', background: 'transparent', border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', textAlign: 'left',
-            }}
-          >
-            <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1a1a2e' }}>{s.title}</span>
-            <span style={{ color: '#aaa', fontSize: '1rem', transform: open === s.key ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>›</span>
-          </button>
-          {open === s.key && (
-            <div style={{ padding: '0 1.2rem 1.2rem' }}>
-              {s.content}
-            </div>
-          )}
-        </div>
-      ))}
+
+      {/* What is Elevation — always visible */}
+      <div style={{ background: '#fff', border: '1px solid #e0e4f0', borderRadius: '12px', padding: '1.2rem', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+        <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1a1a2e', marginBottom: '0.6rem' }}>What is Elevation?</div>
+        <p style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.8, margin: 0 }}>
+          Elevation is a multi-perspective thinking tool that runs your ideas through a panel of distinct expert voices simultaneously. Instead of thinking through a problem from a single point of view, Elevation surfaces the angles, blind spots, and insights you might never have considered on your own — giving you a fuller, more honest picture before you act. Whether you're stress-testing a decision, exploring a new idea, or just trying to think more clearly, Elevation helps you see further by looking from higher ground.
+        </p>
+      </div>
+
+      {/* Summit Approach — collapsible */}
+      <div style={{ background: '#fff', border: '1px solid #e0e4f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+        <button
+          onClick={() => setSummitOpen(p => !p)}
+          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem 1.2rem', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}
+        >
+          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1a1a2e' }}>Summit Approach</span>
+          <span style={{ color: '#aaa', fontSize: '1rem', transform: summitOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>›</span>
+        </button>
+        {summitOpen && (
+          <div style={{ padding: '0 1.2rem 1.2rem' }}>
+            <ol style={{ color: '#555', fontSize: '0.9rem', lineHeight: 1.8, margin: 0, paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+              <li><strong style={{ color: '#2a4a8a' }}>Enter your idea.</strong> Type any idea, decision, question, or problem into the text field. The more specific you are, the sharper the perspectives.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Discover your lenses.</strong> Hit "Discover context-specific lenses" and Elevation will identify the four expert perspectives most relevant to your specific idea — alongside The Philosopher, who examines the foundational assumptions of anything.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Add political perspectives (optional).</strong> Once discovered, a separate political section appears — Progressive, Moderate, and Conservative. Select any you want included.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Select and Elevate.</strong> Click any persona card to select it, then hit "Elevate" to run your idea through all selected lenses at once. Each persona will ask probing questions and deliver their honest read.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Dig deeper.</strong> If a particular perspective intrigues you, click "Dig deeper →" on that card to open a one-on-one conversation with that persona — staying fully in character.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Blend perspectives.</strong> Select any combination of responses using the "+ Blend" button, then hit "Blend →" in the floating bar to synthesize them into one balanced, comprehensive thought.</li>
+            </ol>
+          </div>
+        )}
+      </div>
+
     </div>
   )
 }
