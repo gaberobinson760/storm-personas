@@ -723,6 +723,7 @@ function InfoSections() {
               <li><strong style={{ color: '#2a4a8a' }}>Select and Elevate.</strong> Click any persona card to select it, then hit "Elevate" to run your idea through all selected lenses at once. Each persona will ask probing questions and deliver their honest read.</li>
               <li><strong style={{ color: '#2a4a8a' }}>Dig deeper.</strong> If a particular perspective intrigues you, click "Dig deeper →" on that card to open a one-on-one conversation with that persona — staying fully in character.</li>
               <li><strong style={{ color: '#2a4a8a' }}>Blend perspectives.</strong> Select any combination of responses using the "+ Blend" button, then hit "Blend →" in the floating bar to synthesize them into one balanced, comprehensive thought.</li>
+              <li><strong style={{ color: '#2a4a8a' }}>Summarize and save.</strong> Once responses are in, hit "Generate Summary" to produce a structured recap — including key questions, a synthesis of perspectives, your Dig Deeper conversations, and a conclusion. You can download it as a text file or send it directly to your email for future reference.</li>
             </ol>
           </div>
         )}
