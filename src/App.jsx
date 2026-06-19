@@ -92,25 +92,34 @@ Return ONLY valid JSON — no markdown, no explanation:
   ]
 }`
 
-async function anthropicCall(apiKey, system, messages, maxTokens = 800) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: maxTokens,
-      system,
-      messages,
-    }),
-  })
-  const data = await res.json()
-  if (data.error) throw new Error(data.error.message)
-  return data.content[0].text
+async function anthropicCall(apiKey, system, messages, maxTokens = 800, retries = 3) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: maxTokens,
+        system,
+        messages,
+      }),
+    })
+    const data = await res.json()
+    if (res.status === 529 || data.error?.type === 'overloaded_error') {
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 2000 * (attempt + 1)))
+        continue
+      }
+      throw new Error('The API is currently overloaded. Please try again in a moment.')
+    }
+    if (data.error) throw new Error(data.error.message)
+    return data.content[0].text
+  }
 }
 
 // ── Chat Modal ────────────────────────────────────────────────────────────────
