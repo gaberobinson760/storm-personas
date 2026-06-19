@@ -567,9 +567,10 @@ function SummaryModal({ idea, personas, responses, chatHistories = {}, conclusio
             <div style={{ fontWeight: 700, color: '#2a4a8a', fontSize: '1rem' }}>Elevation Summary</div>
             <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '0.1rem', fontStyle: 'italic' }}>{idea.length > 80 ? idea.slice(0, 80) + '…' : idea}</div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={handleDownload} style={{ background: 'transparent', border: '1.5px solid #a0b8e8', color: '#4a6ab0', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>↓ Download</button>
-            <button onClick={handleEmail} style={{ background: 'linear-gradient(135deg, #2a4a8a, #4a6ab0)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✉ Email</button>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {loadingConclusion && <span style={{ fontSize: '0.72rem', color: '#aaa', fontStyle: 'italic' }}>finishing summary…</span>}
+            <button onClick={handleDownload} disabled={loadingConclusion} title={loadingConclusion ? 'Waiting for conclusion…' : ''} style={{ background: 'transparent', border: '1.5px solid #a0b8e8', color: loadingConclusion ? '#ccc' : '#4a6ab0', borderColor: loadingConclusion ? '#ddd' : '#a0b8e8', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: loadingConclusion ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>↓ Download</button>
+            <button onClick={handleEmail} disabled={loadingConclusion} title={loadingConclusion ? 'Waiting for conclusion…' : ''} style={{ background: loadingConclusion ? '#ccc' : 'linear-gradient(135deg, #2a4a8a, #4a6ab0)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: loadingConclusion ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>✉ Email</button>
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: '0.2rem' }}>×</button>
           </div>
         </div>
