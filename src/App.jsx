@@ -115,10 +115,18 @@ async function anthropicCall(apiKey, system, messages, maxTokens = 800) {
 
 // ── Chat Modal ────────────────────────────────────────────────────────────────
 
-function ChatModal({ persona, initialResponse, originalIdea, apiKey, onClose }) {
-  const [messages, setMessages] = useState([
-    { role: 'assistant', content: initialResponse }
-  ])
+function ChatModal({ persona, initialResponse, originalIdea, apiKey, onClose, messages, onMessagesChange }) {
+  const [localMessages, setLocalMessages] = useState(
+    messages?.length ? messages : [{ role: 'assistant', content: initialResponse }]
+  )
+
+  function updateMessages(fn) {
+    setLocalMessages(prev => {
+      const next = fn(prev)
+      onMessagesChange?.(next)
+      return next
+    })
+  }
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
@@ -137,28 +145,21 @@ function ChatModal({ persona, initialResponse, originalIdea, apiKey, onClose }) 
     if (!input.trim() || loading) return
 
     const userMsg = { role: 'user', content: input.trim() }
-    const newMessages = [...messages, userMsg]
-    setMessages(newMessages)
+    const newMessages = [...localMessages, userMsg]
+    updateMessages(() => newMessages)
     setInput('')
     setLoading(true)
 
     try {
-      // Include the original idea as context in the first user turn
       const apiMessages = newMessages.map((m, i) => {
         if (i === 0) return { role: 'user', content: `Context — the original idea we discussed: "${originalIdea}"\n\nYour initial response was:\n${m.content}` }
         if (i === 1) return { role: 'assistant', content: 'Understood. What would you like to explore further?' }
         return m
       })
-
-      const reply = await anthropicCall(
-        apiKey,
-        CHAT_SYSTEM_PROMPT(persona.name, persona.role, persona.angle),
-        apiMessages,
-        600
-      )
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      const reply = await anthropicCall(apiKey, CHAT_SYSTEM_PROMPT(persona.name, persona.role, persona.angle), apiMessages, 600)
+      updateMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }])
+      updateMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}` }])
     } finally {
       setLoading(false)
     }
@@ -229,7 +230,7 @@ function ChatModal({ persona, initialResponse, originalIdea, apiKey, onClose }) 
           flexDirection: 'column',
           gap: '1.2rem',
         }}>
-          {messages.map((msg, i) => (
+          {localMessages.map((msg, i) => (
             <div key={i} style={{
               display: 'flex',
               justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
@@ -462,7 +463,7 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
 
 // ── Summary Modal ─────────────────────────────────────────────────────────────
 
-function SummaryModal({ idea, personas, responses, conclusion, loadingConclusion, onClose }) {
+function SummaryModal({ idea, personas, responses, chatHistories = {}, conclusion, loadingConclusion, onClose }) {
   const summaryRef = useRef(null)
 
   function extractQuestions(text) {
@@ -511,6 +512,13 @@ function SummaryModal({ idea, personas, responses, conclusion, loadingConclusion
     respondedPersonas.forEach(p => {
       lines.push(`\n${p.icon} ${p.name}`)
       lines.push(extractRead(responses[p.id]))
+      const thread = chatHistories[p.id]
+      if (thread && thread.length > 1) {
+        lines.push('\n  — Dig Deeper conversation —')
+        thread.slice(1).forEach(m => {
+          lines.push(`  ${m.role === 'user' ? 'You' : p.name}: ${m.content}`)
+        })
+      }
     })
     if (conclusion) {
       lines.push('', '─────────────────────────────')
@@ -587,15 +595,32 @@ function SummaryModal({ idea, personas, responses, conclusion, loadingConclusion
           <section>
             <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#aab0c8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Views from the Summit</div>
             <div style={{ fontSize: '0.82rem', color: '#aaa', marginBottom: '1rem' }}>Each perspective's honest read</div>
-            {respondedPersonas.map(p => (
-              <div key={p.id} style={{ marginBottom: '1.4rem', paddingLeft: '1rem', borderLeft: `3px solid ${p.color}44` }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                  <span>{p.icon}</span>
-                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: p.color }}>{p.name}</span>
+            {respondedPersonas.map(p => {
+              const thread = chatHistories[p.id]
+              const hasThread = thread && thread.length > 1
+              return (
+                <div key={p.id} style={{ marginBottom: '1.4rem', paddingLeft: '1rem', borderLeft: `3px solid ${p.color}44` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    <span>{p.icon}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem', color: p.color }}>{p.name}</span>
+                  </div>
+                  <div style={{ fontSize: '0.87rem', color: '#444', lineHeight: 1.75 }}>{extractRead(responses[p.id])}</div>
+                  {hasThread && (
+                    <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: `1px dashed ${p.color}33` }}>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: p.color, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.6rem', opacity: 0.7 }}>Dig Deeper Thread</div>
+                      {thread.slice(1).map((m, i) => (
+                        <div key={i} style={{ marginBottom: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: m.role === 'user' ? '#4a6ab0' : p.color, flexShrink: 0, paddingTop: '0.15rem' }}>
+                            {m.role === 'user' ? 'You' : p.name.replace('The ', '')}
+                          </span>
+                          <span style={{ fontSize: '0.85rem', color: '#555', lineHeight: 1.65 }}>{m.content}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: '0.87rem', color: '#444', lineHeight: 1.75 }}>{extractRead(responses[p.id])}</div>
-              </div>
-            ))}
+              )
+            })}
           </section>
 
           <div style={{ height: '1px', background: '#e8ecf4' }} />
@@ -729,6 +754,7 @@ export default function App() {
   const [panelRan, setPanelRan] = useState(false)
   const [error, setError] = useState('')
   const [activeChat, setActiveChat] = useState(null)
+  const [chatHistories, setChatHistories] = useState({})
   const [blendSet, setBlendSet] = useState(new Set())
   const [blendModal, setBlendModal] = useState(false)
   const [blendResult, setBlendResult] = useState(null)
@@ -858,6 +884,7 @@ export default function App() {
     setBlendResult(null)
     setConclusion(null)
     setSummaryModal(false)
+    setChatHistories({})
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
@@ -1020,6 +1047,8 @@ export default function App() {
           originalIdea={idea}
           apiKey={apiKey}
           onClose={() => setActiveChat(null)}
+          messages={chatHistories[activeChat.persona.id]}
+          onMessagesChange={msgs => setChatHistories(prev => ({ ...prev, [activeChat.persona.id]: msgs }))}
         />
       )}
 
@@ -1029,6 +1058,7 @@ export default function App() {
           idea={idea}
           personas={allPersonas}
           responses={responses}
+          chatHistories={chatHistories}
           conclusion={conclusion}
           loadingConclusion={conclusionLoading}
           onClose={() => setSummaryModal(false)}
