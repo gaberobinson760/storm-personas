@@ -67,6 +67,15 @@ Do not just summarize each perspective in sequence. Instead, weave them together
 
 Write in clear, direct prose. No bullet points. 3-5 paragraphs. Start with the core insight that emerges from holding all perspectives at once, then work through the nuance.`
 
+const CONCLUSION_PROMPT = `You are a synthesis expert. You have been given an original idea and responses from multiple distinct expert perspectives. Your job is to write "The Ascent Forward" — a concise, honest conclusion that ties everything together.
+
+Do not summarize each perspective individually. Instead, write 2-3 punchy paragraphs that:
+1. Identify the central tension or key insight that emerges across all perspectives
+2. Name what needs to happen next — the clearest path forward given everything raised
+3. End with one memorable sentence that captures what this idea is really about
+
+Be direct. No hedging. Write like someone who has heard everything and is now telling you what matters.`
+
 const DISCOVER_PERSONAS_PROMPT = `You are a thinking partner. Given an idea or problem, identify the 4 most useful expert perspectives to pressure-test it.
 
 Do NOT use generic archetypes (avoid: "devil's advocate", "pragmatist", "visionary"). Identify specific expert lenses that matter most for THIS particular idea.
@@ -451,6 +460,169 @@ function PersonaCard({ persona, response, loading, discovering, selected, onTogg
   )
 }
 
+// ── Summary Modal ─────────────────────────────────────────────────────────────
+
+function SummaryModal({ idea, personas, responses, conclusion, loadingConclusion, onClose }) {
+  const summaryRef = useRef(null)
+
+  function extractQuestions(text) {
+    const lines = text.split('\n')
+    const questions = []
+    let inQSection = false
+    for (const line of lines) {
+      if (line.includes('Questions I\'d want answered')) { inQSection = true; continue }
+      if (line.startsWith('**') && inQSection) { inQSection = false }
+      if (inQSection && line.startsWith('- ')) questions.push(line.slice(2).trim())
+    }
+    return questions
+  }
+
+  function extractRead(text) {
+    const match = text.match(/\*\*My read:\*\*\n?([\s\S]+)/)
+    return match ? match[1].trim() : text
+  }
+
+  const respondedPersonas = personas.filter(p => responses[p.id])
+
+  function buildPlainText() {
+    const lines = [
+      'ELEVATION SUMMARY',
+      '=================',
+      '',
+      `Idea: ${idea}`,
+      `Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      '',
+      '─────────────────────────────',
+      'BEFORE YOU CLIMB',
+      'Questions surfaced across all perspectives',
+      '─────────────────────────────',
+    ]
+    respondedPersonas.forEach(p => {
+      const qs = extractQuestions(responses[p.id])
+      if (qs.length) {
+        lines.push(`\n${p.icon} ${p.name}`)
+        qs.forEach(q => lines.push(`  · ${q}`))
+      }
+    })
+    lines.push('', '─────────────────────────────')
+    lines.push('VIEWS FROM THE SUMMIT')
+    lines.push('Each perspective\'s honest read')
+    lines.push('─────────────────────────────')
+    respondedPersonas.forEach(p => {
+      lines.push(`\n${p.icon} ${p.name}`)
+      lines.push(extractRead(responses[p.id]))
+    })
+    if (conclusion) {
+      lines.push('', '─────────────────────────────')
+      lines.push('THE ASCENT FORWARD')
+      lines.push('─────────────────────────────')
+      lines.push('', conclusion)
+    }
+    return lines.join('\n')
+  }
+
+  function handleDownload() {
+    const text = buildPlainText()
+    const blob = new Blob([text], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `elevation-summary-${Date.now()}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function handleEmail() {
+    const text = buildPlainText()
+    const subject = encodeURIComponent(`Elevation Summary — ${idea.slice(0, 60)}`)
+    const body = encodeURIComponent(text)
+    window.location.href = `mailto:?subject=${subject}&body=${body}`
+  }
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(10,15,30,0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', width: '100%', maxWidth: '720px', height: '88vh', borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 -8px 40px rgba(0,0,0,0.2)' }}>
+
+        {/* Header */}
+        <div style={{ padding: '1.2rem 1.5rem', borderBottom: '3px solid #2a4a8a', display: 'flex', alignItems: 'center', gap: '0.7rem', background: '#fafbff', flexShrink: 0 }}>
+          <span style={{ fontSize: '1.4rem' }}>📋</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, color: '#2a4a8a', fontSize: '1rem' }}>Elevation Summary</div>
+            <div style={{ fontSize: '0.75rem', color: '#aaa', marginTop: '0.1rem', fontStyle: 'italic' }}>{idea.length > 80 ? idea.slice(0, 80) + '…' : idea}</div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button onClick={handleDownload} style={{ background: 'transparent', border: '1.5px solid #a0b8e8', color: '#4a6ab0', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>↓ Download</button>
+            <button onClick={handleEmail} style={{ background: 'linear-gradient(135deg, #2a4a8a, #4a6ab0)', border: 'none', color: '#fff', borderRadius: '8px', padding: '0.4rem 0.9rem', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>✉ Email</button>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: '0.2rem' }}>×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div ref={summaryRef} style={{ flex: 1, overflowY: 'auto', padding: '1.8rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+          {/* Before You Climb */}
+          <section>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#aab0c8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Before You Climb</div>
+            <div style={{ fontSize: '0.82rem', color: '#aaa', marginBottom: '1rem' }}>Questions surfaced across all perspectives</div>
+            {respondedPersonas.map(p => {
+              const qs = extractQuestions(responses[p.id])
+              if (!qs.length) return null
+              return (
+                <div key={p.id} style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                    <span>{p.icon}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.82rem', color: p.color }}>{p.name}</span>
+                  </div>
+                  {qs.map((q, i) => (
+                    <div key={i} style={{ paddingLeft: '1.4rem', fontSize: '0.87rem', color: '#555', lineHeight: 1.7, marginBottom: '0.2rem' }}>· {q}</div>
+                  ))}
+                </div>
+              )
+            })}
+          </section>
+
+          <div style={{ height: '1px', background: '#e8ecf4' }} />
+
+          {/* Views from the Summit */}
+          <section>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#aab0c8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Views from the Summit</div>
+            <div style={{ fontSize: '0.82rem', color: '#aaa', marginBottom: '1rem' }}>Each perspective's honest read</div>
+            {respondedPersonas.map(p => (
+              <div key={p.id} style={{ marginBottom: '1.4rem', paddingLeft: '1rem', borderLeft: `3px solid ${p.color}44` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                  <span>{p.icon}</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem', color: p.color }}>{p.name}</span>
+                </div>
+                <div style={{ fontSize: '0.87rem', color: '#444', lineHeight: 1.75 }}>{extractRead(responses[p.id])}</div>
+              </div>
+            ))}
+          </section>
+
+          <div style={{ height: '1px', background: '#e8ecf4' }} />
+
+          {/* The Ascent Forward */}
+          <section>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#aab0c8', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>The Ascent Forward</div>
+            {loadingConclusion ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#aaa', fontSize: '0.85rem', padding: '1rem 0' }}>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {[0,1,2].map(i => <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4a6ab0', animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />)}
+                </div>
+                Writing the conclusion...
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.92rem', lineHeight: 1.85, color: '#333' }}>
+                {conclusion?.split('\n\n').map((para, i) => <p key={i} style={{ marginBottom: '1rem' }}>{para}</p>)}
+              </div>
+            )}
+          </section>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Blend Modal ───────────────────────────────────────────────────────────────
 
 function BlendModal({ result, loading, onClose }) {
@@ -561,6 +733,9 @@ export default function App() {
   const [blendModal, setBlendModal] = useState(false)
   const [blendResult, setBlendResult] = useState(null)
   const [blendLoading, setBlendLoading] = useState(false)
+  const [summaryModal, setSummaryModal] = useState(false)
+  const [conclusion, setConclusion] = useState(null)
+  const [conclusionLoading, setConclusionLoading] = useState(false)
 
   const allPersonas = [...PRESET_PERSONAS, PHILOSOPHER, ...(discovered || [])]
 
@@ -656,6 +831,24 @@ export default function App() {
     }
   }
 
+  async function handleOpenSummary() {
+    setSummaryModal(true)
+    setConclusion(null)
+    setConclusionLoading(true)
+    const respondedPersonas = allPersonas.filter(p => responses[p.id])
+    const content = `Original idea: "${idea}"\n\n` + respondedPersonas.map(p =>
+      `--- ${p.name} ---\n${responses[p.id]}`
+    ).join('\n\n')
+    try {
+      const result = await anthropicCall(apiKey, CONCLUSION_PROMPT, [{ role: 'user', content }], 800)
+      setConclusion(result)
+    } catch (err) {
+      setConclusion(`Error generating conclusion: ${err.message}`)
+    } finally {
+      setConclusionLoading(false)
+    }
+  }
+
   function handleReset() {
     setDiscovered(null)
     setResponses({})
@@ -663,6 +856,8 @@ export default function App() {
     setPanelRan(false)
     setBlendSet(new Set())
     setBlendResult(null)
+    setConclusion(null)
+    setSummaryModal(false)
   }
 
   const anyLoading = Object.values(loading).some(Boolean)
@@ -765,8 +960,14 @@ export default function App() {
 
       {/* Post-run controls */}
       {panelRan && !anyLoading && (
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8ecf4' }}>
-          <button onClick={() => { setPanelRan(false); setResponses({}) }} style={{ background: '#fff', border: '1px solid #e0e4f0', color: '#888', borderRadius: '8px', padding: '0.45rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Adjust selection</button>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e8ecf4', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            onClick={handleOpenSummary}
+            style={{ background: 'linear-gradient(135deg, #2a4a8a, #4a6ab0)', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.6rem 1.3rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(42,74,138,0.25)' }}
+          >
+            📋 Generate Summary
+          </button>
+          <button onClick={() => { setPanelRan(false); setResponses({}) }} style={{ background: '#fff', border: '1px solid #e0e4f0', color: '#888', borderRadius: '8px', padding: '0.6rem 1rem', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Adjust selection</button>
           <button onClick={handleReset} style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Start over</button>
         </div>
       )}
@@ -819,6 +1020,18 @@ export default function App() {
           originalIdea={idea}
           apiKey={apiKey}
           onClose={() => setActiveChat(null)}
+        />
+      )}
+
+      {/* Summary modal */}
+      {summaryModal && (
+        <SummaryModal
+          idea={idea}
+          personas={allPersonas}
+          responses={responses}
+          conclusion={conclusion}
+          loadingConclusion={conclusionLoading}
+          onClose={() => setSummaryModal(false)}
         />
       )}
 
